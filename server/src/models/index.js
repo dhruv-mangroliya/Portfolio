@@ -9,3 +9,5 @@ export { SiteSettings } from './SiteSettings.js';
 export { SkillGroup } from './SkillGroup.js';
 export { Stat } from './Stat.js';
 export { User } from './User.js';
+export { WeightEntry } from './WeightEntry.js';
+export { DietDay, DietPlan } from './Diet.js';

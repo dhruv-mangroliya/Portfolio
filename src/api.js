@@ -48,6 +48,18 @@ export const api = {
   content: () => request('GET', '/content'),
   contact: (data) => request('POST', '/contact', data),
 
+  // Weight tracker
+  weights: ({ from, to } = {}) => request('GET', `/admin/weight?${new URLSearchParams(Object.entries({ from, to }).filter(([, v]) => v))}`),
+  saveWeight: (date, data) => request('PUT', `/admin/weight/${date}`, data),
+  deleteWeight: (date) => request('DELETE', `/admin/weight/${date}`),
+
+  // Diet tracker
+  dietPlan: () => request('GET', '/admin/diet/plan'),
+  saveDietPlan: (plan) => request('PUT', '/admin/diet/plan', plan),
+  dietDays: ({ from, to } = {}) => request('GET', `/admin/diet/days?${new URLSearchParams(Object.entries({ from, to }).filter(([, v]) => v))}`),
+  dietDay: (date) => request('GET', `/admin/diet/days/${date}`),
+  saveDietDay: (date, day) => request('PUT', `/admin/diet/days/${date}`, day),
+
   // auth
   login: (username, password) => request('POST', '/auth/login', { username, password }).then((d) => d.user),
   logout: () => request('POST', '/auth/logout'),

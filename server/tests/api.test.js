@@ -363,3 +363,80 @@ describe('project cover upload', () => {
     await agent.post('/api/v1/admin/media').send({ image: 'data:image/png;base64,' + Buffer.from('nope, not a png file').toString('base64') }).expect(400);
   });
 });
+
+describe('weight tracker', () => {
+  test('is private', async () => {
+    await request(app).get('/api/v1/admin/weight').expect(401);
+    await request(app).put('/api/v1/admin/weight/2026-01-01').send({ weight: 70 }).expect(401);
+  });
+
+  test('log → update same day → range filter → delete', async () => {
+    const agent = await signedIn();
+    const base = '/api/v1/admin/weight';
+    let res = await agent.put(`${base}/2026-03-02`).send({ weight: '72.46', note: 'morning' }).expect(201);
+    assert.equal(res.body.entry.weight, 72.46);
+    assert.equal(res.body.created, true);
+    await agent.put(`${base}/2026-03-01`).send({ weight: 73 }).expect(201);
+    await agent.put(`${base}/2026-03-05`).send({ weight: 71.8 }).expect(201);
+
+    res = await agent.put(`${base}/2026-03-02`).send({ weight: 72.2 }).expect(200); // one entry per day
+    assert.equal(res.body.created, false);
+
+    res = await agent.get(base).expect(200);
+    assert.deepEqual(res.body.entries.map((e) => [e.date, e.weight]), [['2026-03-01', 73], ['2026-03-02', 72.2], ['2026-03-05', 71.8]]);
+    res = await agent.get(`${base}?from=2026-03-02&to=2026-03-04`).expect(200);
+    assert.deepEqual(res.body.entries.map((e) => e.date), ['2026-03-02']);
+
+    await agent.delete(`${base}/2026-03-05`).expect(204);
+    await agent.delete(`${base}/2026-03-05`).expect(404);
+  });
+
+  test('rejects bad dates and weights', async () => {
+    const agent = await signedIn();
+    const base = '/api/v1/admin/weight';
+    await agent.put(`${base}/2026-02-30`).send({ weight: 70 }).expect(400);
+    await agent.put(`${base}/yesterday`).send({ weight: 70 }).expect(400);
+    const res = await agent.put(`${base}/2026-03-10`).send({ weight: 5 }).expect(400);
+    assert.ok(res.body.error.fields.weight);
+    await agent.put(`${base}/2026-03-10`).send({}).expect(400);
+  });
+});
+
+describe('diet tracker', () => {
+  test('is private', async () => {
+    await request(app).get('/api/v1/admin/diet/plan').expect(401);
+    await request(app).put('/api/v1/admin/diet/days/2026-01-01').send({}).expect(401);
+  });
+
+  test('starter plan → edit plan → tick a day → summaries', async () => {
+    const agent = await signedIn();
+    let res = await agent.get('/api/v1/admin/diet/plan').expect(200);
+    const plan = res.body.plan;
+    assert.ok(plan.sessions.length >= 5);
+    assert.ok(plan.supplements.some((s) => s.name === 'B12'));
+
+    plan.sessions[0].items.push({ id: 'eggs', name: 'Eggs', protein: '12', calories: 140, quantity: '2' });
+    res = await agent.put('/api/v1/admin/diet/plan').send({ sessions: plan.sessions, supplements: plan.supplements, preparations: plan.preparations }).expect(200);
+    assert.equal(res.body.plan.sessions[0].items.at(-1).protein, 12);
+
+    res = await agent.get('/api/v1/admin/diet/days/2026-03-03').expect(200);
+    assert.deepEqual(res.body.day.items, []);
+
+    const day = {
+      items: [{ itemId: 'eggs', sessionId: plan.sessions[0].id, name: 'Eggs', protein: 12, calories: 140, quantity: '2' }],
+      extras: [{ id: 'x1', name: 'Pizza', protein: 10, calories: 300 }],
+      supplements: ['b12'],
+      preparations: [],
+    };
+    await agent.put('/api/v1/admin/diet/days/2026-03-03').send(day).expect(200);
+    res = await agent.get('/api/v1/admin/diet/days?from=2026-03-01&to=2026-03-31').expect(200);
+    assert.deepEqual(res.body.days, [{ date: '2026-03-03', protein: 22, calories: 440, items: 2, supplements: 1 }]);
+  });
+
+  test('rejects bad input', async () => {
+    const agent = await signedIn();
+    await agent.put('/api/v1/admin/diet/days/2026-13-40').send({ items: [], extras: [], supplements: [], preparations: [] }).expect(400);
+    await agent.put('/api/v1/admin/diet/days/2026-03-04').send({ items: [], extras: [{ id: 'x', name: 'A', protein: -1, calories: 1 }], supplements: [], preparations: [] }).expect(400);
+    await agent.put('/api/v1/admin/diet/plan').send({ sessions: [{ id: 's', name: '', target: { protein: 0, calories: 0 }, items: [] }], supplements: [], preparations: [] }).expect(400);
+  });
+});

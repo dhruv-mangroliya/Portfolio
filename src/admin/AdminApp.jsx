@@ -11,6 +11,9 @@ import Overview from './pages/Overview.jsx';
 import ProfileEditor from './pages/ProfileEditor.jsx';
 import Appearance from './pages/Appearance.jsx';
 import Settings from './pages/Settings.jsx';
+import Weight from './pages/Weight.jsx';
+import Diet from './pages/Diet.jsx';
+import DietPlan from './pages/DietPlan.jsx';
 import { COLLECTIONS } from './schema.js';
 import { ConfirmProvider, ErrorBox, ToastProvider } from './ui.jsx';
 import { useNoIndex } from './hooks.js';
@@ -21,8 +24,6 @@ export const useAdmin = () => useContext(AdminCtx);
 
 // Personal trackers planned next — shown in the sidebar so the structure is ready for them.
 const LIFE_TRACKERS = [
-  { key: 'weight', label: 'Weight', icon: 'scale', accent: 'pink' },
-  { key: 'diet', label: 'Diet & meals', icon: 'apple', accent: 'lime' },
   { key: 'habits', label: 'Habits', icon: 'target', accent: 'cyan' },
 ];
 
@@ -116,6 +117,8 @@ function Shell() {
             <SideLink to="/admin/appearance" icon="palette" accent="cyan">Appearance</SideLink>
 
             <p className="side-label">Life tracker</p>
+            <SideLink to="/admin/weight" icon="scale" accent="pink">Weight</SideLink>
+            <SideLink to="/admin/diet" icon="apple" accent="lime">Diet & meals</SideLink>
             {LIFE_TRACKERS.map((t) => (
               <span key={t.key} className="side-link disabled" title="Coming next">
                 <span className={cx('side-icon', `a-${t.accent}`)}><Icon name={t.icon} size={16} /></span>
@@ -154,6 +157,9 @@ function Shell() {
               <Route path="messages" element={<Messages />} />
               <Route path="appearance" element={<Appearance />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="weight" element={<Weight />} />
+              <Route path="diet" element={<Diet />} />
+              <Route path="diet/plan" element={<DietPlan />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Routes>
           </main>

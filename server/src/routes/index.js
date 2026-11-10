@@ -9,6 +9,8 @@ import { contactRoutes } from '../modules/contact/contact.routes.js';
 import { contentRoutes } from '../modules/content/content.routes.js';
 import { dashboardRoutes } from '../modules/dashboard/dashboard.routes.js';
 import { mediaAdminRoutes } from '../modules/media/media.admin.routes.js';
+import { dietRoutes } from '../modules/diet/diet.routes.js';
+import { weightRoutes } from '../modules/weight/weight.routes.js';
 import { mediaRoutes } from '../modules/media/media.routes.js';
 import { messageRoutes } from '../modules/messages/messages.routes.js';
 import { profileRoutes } from '../modules/profile/profile.routes.js';
@@ -41,6 +43,8 @@ export function apiV1() {
   admin.use('/theme', themeRoutes);
   admin.use('/media', mediaAdminRoutes);
   admin.use('/messages', messageRoutes);
+  admin.use('/weight', weightRoutes);
+  admin.use('/diet', dietRoutes);
   admin.use('/collections/:collection', collectionRoutes);
   api.use('/admin', admin);
 
