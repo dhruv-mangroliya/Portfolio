@@ -555,7 +555,13 @@ export function Contact({ profile }) {
             <Socials socials={profile.socials} className="on-dark" />
           </div>
 
-          <form className="contact-form" onSubmit={submit} noValidate>
+          <form
+            className="contact-form"
+            onSubmit={submit}
+            noValidate
+            toolname="send_message_to_dhruv"
+            tooldescription="Send Dhruv Mangroliya a message about a job, project or question. He replies by email."
+          >
             <div className="row-2">
               <Field label="Your name" error={fe.name}>
                 <input value={form.name} onChange={set('name')} autoComplete="name" required maxLength={100} />
@@ -608,6 +614,12 @@ export function Footer({ profile }) {
           <span className="logo-name">{profile.name}</span>
         </a>
         <p>© {new Date().getFullYear()} {profile.name}. All rights reserved.</p>
+        <nav className="footer-links" aria-label="About and legal">
+          <a href="/about">About</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </nav>
         <Socials socials={profile.socials} />
       </div>
     </footer>

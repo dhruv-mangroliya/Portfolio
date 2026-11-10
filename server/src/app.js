@@ -15,6 +15,8 @@ import { apiLimiter } from './middleware/rateLimiters.js';
 import { faviconSvg } from '../../src/shared/theme.js';
 import { waitForDb } from './db/connection.js';
 import { DEFAULT_THEME, getTheme } from './modules/theme/theme.service.js';
+import { mcpRoutes } from './modules/mcp/mcp.routes.js';
+import { PAGE_PATHS, renderPage } from './modules/seo/pages.service.js';
 import { renderIndexHtml } from './modules/seo/seo.service.js';
 import { loadContent, renderLlmsTxt, renderRobots, renderSitemap, siteUrlFor } from './modules/seo/crawl.service.js';
 import { apiV1 } from './routes/index.js';
@@ -89,6 +91,14 @@ export function createApp() {
   const text = (type, build) => async (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600').type(type).send(await build(req));
   };
+  // MCP server for AI agents + its discovery card.
+  app.use(['/mcp', '/.well-known'], apiLimiter);
+  app.use(mcpRoutes);
+  // About / Contact / Privacy / Terms — plain server-rendered pages.
+  app.get(PAGE_PATHS, async (req, res) => {
+    res.set('Cache-Control', 'no-cache').type('html').send(await renderPage(req));
+  });
+
   // Tab icon in the current theme colours (Google's search results use it too).
   app.get('/favicon.svg', async (_req, res) => {
     const theme = (await waitForDb(5_000)) ? await getTheme().catch(() => DEFAULT_THEME) : DEFAULT_THEME;

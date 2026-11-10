@@ -36,6 +36,7 @@ export function renderSnapshot(c) {
   out.push('<nav aria-label="Sections"><ul>' +
     [['about', 'About'], ['experience', 'Experience'], ['projects', 'Projects'], ['services', 'Services'], ['skills', 'Skills'], ['education', 'Education'], ['contact', 'Contact']]
       .map(([h, t]) => `<li><a href="/#${h}">${t}</a></li>`).join('') +
+    '<li><a href="/about">About page</a></li><li><a href="/contact">Contact page</a></li><li><a href="/privacy">Privacy</a></li><li><a href="/terms">Terms</a></li>' +
     '<li><a href="/llms.txt">Plain-text profile</a></li></ul></nav>');
   out.push('</header><main>');
 
@@ -122,7 +123,9 @@ export function renderLlmsTxt(c, site) {
     `- [Experience](${site}#experience): work history`,
     `- [Projects](${site}#projects): selected work with links`,
     `- [Services](${site}#services): what I can build for you`,
-    `- [Contact](${site}#contact): email and contact form`, '');
+    `- [Contact](${site}#contact): email and contact form`,
+    `- [About page](${site}about)`, `- [Contact page](${site}contact)`, `- [Privacy](${site}privacy)`, `- [Terms](${site}terms)`,
+    `- [MCP server card](${site}.well-known/mcp/server-card.json): tools for agents (profile, projects, send a message)`, '');
   const ext = [
     ...Object.entries(p.socials || {}).filter(([, u]) => isUrl(u)).map(([k, u]) => `- [${label(k)}](${u})`),
     ...(isUrl(p.resumeUrl) ? [`- [Résumé](${p.resumeUrl})`] : []),
@@ -186,7 +189,7 @@ export function renderRobots(site) {
 }
 
 export function renderSitemap(site, lastmod) {
-  const urls = [site];
+  const urls = [site, `${site}about`, `${site}contact`, `${site}privacy`, `${site}terms`];
   const day = (lastmod || new Date()).toISOString().slice(0, 10);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

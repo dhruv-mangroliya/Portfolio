@@ -37,7 +37,7 @@ export function buildHeadTags(profile, content) {
   // The freelance side: what is offered, by whom, and how to get in touch.
   const services = content?.services ?? [];
   const business = {
-    '@type': 'ProfessionalService',
+    '@type': ['Organization', 'ProfessionalService'],
     '@id': id('business'),
     name: `${name} — Software Development`,
     description,

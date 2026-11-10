@@ -6,7 +6,7 @@ import { validate } from '../../middleware/validate.js';
 import { zEmail, zRequired, zText } from '../../utils/validators.js';
 import { createMessage } from '../messages/messages.service.js';
 
-const contactSchema = z.object({
+export const contactSchema = z.object({
   name: zRequired(100, 'Name'),
   email: zEmail,
   subject: zText(150),

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import Icon from '../shared/Icon.jsx';
 import { applyTheme } from '../shared/theme.js';
+import { registerWebMcpTools } from './webmcp.js';
 import {
   About,
   Contact,
@@ -59,6 +60,7 @@ export default function Site({ notFound = false }) {
   const d = state.data;
   useEffect(() => {
     if (d?.theme) applyTheme(d.theme);
+    if (d) registerWebMcpTools(d);
   }, [d]);
 
   useEffect(() => {
