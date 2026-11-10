@@ -120,8 +120,16 @@ export default function Todo() {
   function moveTo(id, day, prio, index, visibleIds) {
     const t = data.tasks.find((x) => x.id === id);
     if (!t) return;
+    // The Finished section: dropping there completes the task (it keeps its priority).
+    if (prio === 'done') {
+      const patch = {};
+      if (t.day !== day) patch.day = day;
+      if (!t.done) patch.done = true;
+      if (Object.keys(patch).length) patchTask(id, patch);
+      return;
+    }
     const inSection = data.tasks
-      .filter((x) => x.day === day && x.id !== id && (x.priority ?? null) === prio && (!visibleIds || visibleIds.has(x.id)))
+      .filter((x) => x.day === day && x.id !== id && !x.done && (x.priority ?? null) === prio && (!visibleIds || visibleIds.has(x.id)))
       .sort((a, b) => a.order - b.order);
     if (index > inSection.length) index = inSection.length; // e.g. Infinity = end of section
     const prev = inSection[index - 1]?.order;
@@ -131,6 +139,7 @@ export default function Todo() {
     if (t.day !== day) patch.day = day;
     if (t.order !== order) patch.order = order;
     if ((t.priority ?? null) !== prio) patch.priority = prio;
+    if (t.done) patch.done = false; // dragged out of Finished → open again
     if (Object.keys(patch).length) patchTask(id, patch);
   }
 
@@ -256,6 +265,7 @@ const SECTIONS = [
   { key: 'medium', label: 'Medium', icon: 'minus' },
   { key: 'low', label: 'Low', icon: 'arrow-down' },
   { key: null, label: 'No priority', icon: null },
+  { key: 'done', label: 'Finished', icon: 'check' },
 ];
 
 function Board({ week, thisWeek, tasks, cats, categories, filter, onMove, onToggle, onEdit, onDelete, onAdd }) {
@@ -310,8 +320,8 @@ function Board({ week, thisWeek, tasks, cats, categories, filter, onMove, onTogg
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
               if (!e.target.closest('.todo-sec')) {
-                const prio = dragged.priority ?? null;
-                setOverIfChanged({ day, prio, index: shown.filter((t) => (t.priority ?? null) === prio && t.id !== dragged.id).length });
+                const prio = dragged.done ? 'done' : dragged.priority ?? null;
+                setOverIfChanged({ day, prio, index: shown.filter((t) => !t.done && (t.priority ?? null) === prio && t.id !== dragged.id).length });
               }
             }}
             onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget) && setOver(null)}
@@ -330,7 +340,10 @@ function Board({ week, thisWeek, tasks, cats, categories, filter, onMove, onTogg
             </header>
 
             {SECTIONS.map((sec) => {
-              const cards = shown.filter((t) => (t.priority ?? null) === sec.key);
+              const cards =
+                sec.key === 'done'
+                  ? shown.filter((t) => t.done).sort((a, b) => new Date(b.doneAt || 0) - new Date(a.doneAt || 0)) // latest first
+                  : shown.filter((t) => !t.done && (t.priority ?? null) === sec.key);
               const isOver = colOver && over.prio === sec.key;
               // Empty sections only appear while dragging, so a card can be dropped into them.
               if (!cards.length && !(drag && sec.key !== null)) return null;
@@ -346,7 +359,7 @@ function Board({ week, thisWeek, tasks, cats, categories, filter, onMove, onTogg
                 >
                   <p className="todo-sec-head">
                     {sec.icon && <Icon name={sec.icon} size={11} strokeWidth={3} />} {sec.label}
-                    {cards.length > 0 && <span>{cards.filter((t) => t.done).length}/{cards.length}</span>}
+                    {cards.length > 0 && <span>{cards.length}</span>}
                   </p>
                   <ul className="todo-cards">
                     {cards.map((t, i) => (
@@ -366,12 +379,12 @@ function Board({ week, thisWeek, tasks, cats, categories, filter, onMove, onTogg
                           onToggle={() => onToggle(t)}
                           onEdit={(patch) => onEdit(t, patch)}
                           onDelete={() => onDelete(t)}
-                          onMoveDay={(d) => onMove(t.id, d, t.priority ?? null, Infinity)}
+                          onMoveDay={(d) => onMove(t.id, d, t.done ? 'done' : t.priority ?? null, Infinity)}
                         />
                       </li>
                     ))}
                     {isOver && over.index >= cards.filter((c) => c.id !== drag?.id).length && <li className="todo-slot"><span className="todo-drop" aria-hidden="true" /></li>}
-                    {!cards.length && !isOver && <li className="todo-sec-empty">Drop here</li>}
+                    {!cards.length && !isOver && <li className="todo-sec-empty">{sec.key === 'done' ? 'Drop here to finish' : 'Drop here'}</li>}
                   </ul>
                 </div>
               );
@@ -430,6 +443,11 @@ function Card({ t, cat, categories, dragging, onDragStart, onDragEnd, onToggle, 
       </button>
       <div className="todo-card-body" onDoubleClick={() => setEditing(true)}>
         <p>{t.title}</p>
+        {t.done && (
+          <span className="todo-done-row" title={t.doneAt ? `Finished ${new Date(t.doneAt).toLocaleString()}` : 'Finished'}>
+            Done{t.doneAt && <> · {new Date(t.doneAt).toLocaleDateString(undefined, { weekday: 'short' })} {new Date(t.doneAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</>}
+          </span>
+        )}
         <div className="todo-meta">
           {t.priority && <PriorityBadge p={t.priority} onClick={() => onEdit({ priority: PRIORITIES[(PRIORITIES.findIndex((x) => x.key === t.priority) + 1) % 3].key })} />}
           {cat && <span className="todo-pill">{cat.name}</span>}

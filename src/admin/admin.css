@@ -759,3 +759,34 @@ textarea.ainput { resize: vertical; line-height: 1.5; }
 .side-group-items { display: grid; gap: 2px; margin: 2px 0 0 12px; padding-left: 8px; border-left: 1px solid var(--od-14); }
 .side-group-btn.has-active:not([aria-expanded="true"]) { background: var(--od-14); box-shadow: inset 3px 0 0 var(--p0); }
 .side-nav > .side-link:first-child { margin-top: 6px; }
+
+/* finished cards: quiet, compact and calm — they settle to the bottom of their section */
+.todo-card { transition: background 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease, opacity 0.25s ease; }
+.todo-card.done,
+.todo-card[class*=' a-'].done {
+  padding-top: 8px; padding-bottom: 8px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-left: 4px solid color-mix(in srgb, var(--a, var(--primary)) 35%, transparent);
+}
+.todo-card.done .todo-card-body p { text-decoration: none; color: var(--ink-3); font-weight: 500; }
+.todo-card.done .todo-check,
+.todo-card[class*=' a-'].done .todo-check {
+  border-radius: 50%; border-color: transparent;
+  background: var(--a, var(--primary)); color: var(--a-on, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--a, var(--primary)) 16%, transparent);
+  animation: todo-pop 0.32s cubic-bezier(.34, 1.56, .64, 1);
+}
+.todo-card:not([class*=' a-']).done .todo-check { background: var(--primary); color: var(--on-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 16%, transparent); }
+.todo-card.done .todo-check svg path { stroke-dasharray: 24; stroke-dashoffset: 0; animation: todo-draw 0.4s 0.08s ease-out both; }
+.todo-done-row { display: block; margin-top: 2px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.01em; color: color-mix(in srgb, var(--ink) 38%, transparent); }
+.todo-card.done .todo-meta { display: none; }
+.todo-card.done:hover { background: var(--surface); }
+.todo-card.done:hover .todo-meta { display: flex; }
+@keyframes todo-pop { from { transform: scale(0.6); } to { transform: scale(1); } }
+@keyframes todo-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .todo-card.done .todo-check, .todo-card.done .todo-check svg path { animation: none; } }
+.todo-done-row { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.todo-sec.sec-done .todo-sec-head { color: var(--ink-3); }
+.todo-sec.sec-done .todo-cards { gap: 6px; }
