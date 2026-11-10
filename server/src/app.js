@@ -1,0 +1,101 @@
+// Express application factory — no side effects (no DB connection, no listen), so tests can import it.
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express from 'express';
+import helmet from 'helmet';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { pinoHttp } from 'pino-http';
+import { config } from './config/env.js';
+import { logger } from './config/logger.js';
+import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { apiLimiter } from './middleware/rateLimiters.js';
+import { renderIndexHtml } from './modules/seo/seo.service.js';
+import { apiV1 } from './routes/index.js';
+
+export function createApp() {
+  const app = express();
+  app.disable('x-powered-by');
+  if (config.http.trustProxy) app.set('trust proxy', config.http.trustProxy);
+
+  // ----- observability: request id + one compact log line per API request -----
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (req, res) => {
+        const incoming = req.headers['x-request-id'];
+        const id = typeof incoming === 'string' && /^[\w-]{1,64}$/.test(incoming) ? incoming : crypto.randomUUID();
+        res.setHeader('X-Request-Id', id);
+        return id;
+      },
+      autoLogging: { ignore: (req) => !req.url.startsWith('/api') || req.url.startsWith('/api/v1/health') },
+      serializers: {
+        req: (req) => ({ id: req.id, method: req.method, url: req.url }),
+        res: (res) => ({ statusCode: res.statusCode }),
+        err: () => undefined, // errors are logged once, by the error handler
+      },
+      customLogLevel: (_req, res) =>
+        res.statusCode >= 500 && res.statusCode !== 503 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
+      customSuccessMessage: (req, res, ms) => `${req.method} ${req.originalUrl} → ${res.statusCode} (${Math.round(ms)}ms)`,
+      customErrorMessage: (req, res) => `${req.method} ${req.originalUrl} → ${res.statusCode}`,
+      quietReqLogger: true,
+    })
+  );
+
+  // ----- security -----
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    })
+  );
+  if (config.http.corsOrigins.length) {
+    app.use('/api', cors({ origin: config.http.corsOrigins, credentials: true }));
+  }
+
+  // ----- parsing & performance -----
+  app.use(compression());
+  // Routes that accept large uploads parse their own body *after* authentication.
+  const LARGE_BODY_ROUTES = new Set(['/api/v1/admin/profile/photo', '/api/v1/admin/media']);
+  const json = express.json({ limit: config.http.bodyLimit });
+  app.use((req, res, next) => (LARGE_BODY_ROUTES.has(req.path) ? next() : json(req, res, next)));
+  app.use(cookieParser());
+
+  // ----- API -----
+  app.use('/api', apiLimiter, (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+  app.use('/api/v1', apiV1());
+  app.use('/api', notFound);
+
+  // ----- frontend (production build) -----
+  if (config.isProd) {
+    app.use(express.static(config.distDir, { index: false, maxAge: '1y', immutable: true }));
+    const template = fs.readFileSync(path.join(config.distDir, 'index.html'), 'utf8');
+    app.get('/{*path}', async (req, res) => {
+      let html = template;
+      try {
+        html = await renderIndexHtml(template);
+      } catch (err) {
+        req.log.warn({ err }, 'SEO tags could not be rendered — serving defaults');
+      }
+      res.set('Cache-Control', 'no-cache').type('html').send(html);
+    });
+  }
+
+  app.use(errorHandler);
+  return app;
+}
