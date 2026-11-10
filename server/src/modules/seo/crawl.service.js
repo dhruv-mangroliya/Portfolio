@@ -3,7 +3,7 @@
 //  • /llms.txt — the same content as Markdown, the emerging convention for AI assistants,
 //  • /robots.txt and /sitemap.xml for search engines.
 import { config } from '../../config/env.js';
-import { isDbReady } from '../../db/connection.js';
+import { waitForDb } from '../../db/connection.js';
 import { getPublicContent } from '../content/content.routes.js';
 
 const esc = (s) =>
@@ -17,7 +17,7 @@ const period = (x) => [x.start, x.current ? 'Present' : x.end].filter(Boolean).j
 export const siteUrlFor = (req) => config.siteUrl || `${req.protocol}://${req.get('host')}/`;
 
 export async function loadContent() {
-  return isDbReady() ? getPublicContent() : null;
+  return (await waitForDb(8_000)) ? getPublicContent() : null;
 }
 
 /* ------------------------------------------------------------------ HTML snapshot */

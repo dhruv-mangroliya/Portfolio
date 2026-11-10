@@ -1,6 +1,7 @@
-import { isDbReady } from '../db/connection.js';
+import { waitForDb } from '../db/connection.js';
 import { ServiceUnavailable } from '../utils/errors.js';
 
-export function requireDb(_req, _res, next) {
-  next(isDbReady() ? undefined : ServiceUnavailable());
+// Right after a (cold) start the database may still be connecting — wait briefly instead of failing.
+export async function requireDb(_req, _res, next) {
+  next((await waitForDb(15_000)) ? undefined : ServiceUnavailable());
 }

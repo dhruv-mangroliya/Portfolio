@@ -16,6 +16,15 @@ export const markDbInitialised = () => {
   initialised = true;
 };
 export const isDbReady = () => initialised && mongoose.connection.readyState === 1;
+/** Resolves true once the DB is ready, or false after `ms` (used to ride out cold starts). */
+export async function waitForDb(ms = 15_000) {
+  const until = Date.now() + ms;
+  while (!isDbReady()) {
+    if (Date.now() > until) return false;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return true;
+}
 export const dbState = () => (isDbReady() ? 'up' : mongoose.connection.readyState === 1 ? 'starting' : 'down');
 
 let stopping = false;

@@ -22,11 +22,20 @@ export default function Site({ notFound = false }) {
   const [state, setState] = useState({ status: 'loading', data: null, error: null });
 
   const load = useCallback(() => {
+    let cancelled = false;
     setState((s) => ({ ...s, status: 'loading' }));
-    api
-      .content()
-      .then((data) => setState({ status: 'ready', data, error: null }))
-      .catch((error) => setState({ status: 'error', data: null, error }));
+    // The server may be waking up (cold start): retry "unavailable" a few times before showing an error.
+    const attempt = (n) =>
+      api
+        .content()
+        .then((data) => !cancelled && setState({ status: 'ready', data, error: null }))
+        .catch((error) => {
+          if (cancelled) return;
+          if (n < 4 && (error?.status === 503 || !error?.status)) setTimeout(() => attempt(n + 1), 1500 * (n + 1));
+          else setState({ status: 'error', data: null, error });
+        });
+    attempt(0);
+    return () => (cancelled = true);
   }, []);
 
   useEffect(load, [load]);
