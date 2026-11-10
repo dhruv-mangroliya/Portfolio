@@ -6,12 +6,12 @@ import { AppError, Unauthorized } from '../../utils/errors.js';
 import { hashPassword, verifyPassword } from '../../utils/password.js';
 
 // Compared against when the username doesn't exist, so response time doesn't reveal valid usernames.
-const DUMMY_HASH = await hashPassword('not-a-real-password');
+const DUMMY_HASH = hashPassword('not-a-real-password'); // promise, created once (no top-level await)
 const { jwtSecret, sessionDays, cookieName, cookieSecure } = config.auth;
 
 export async function authenticate(username, password) {
   const user = await User.findOne({ username }).select('+passwordHash');
-  const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
+  const ok = await verifyPassword(password, user?.passwordHash ?? (await DUMMY_HASH));
   if (!user || !ok) throw Unauthorized('Incorrect username or password.');
   user.lastLoginAt = new Date();
   await user.save();
