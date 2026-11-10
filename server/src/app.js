@@ -13,6 +13,7 @@ import { logger } from './config/logger.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimiters.js';
 import { renderIndexHtml } from './modules/seo/seo.service.js';
+import { loadContent, renderLlmsTxt, renderRobots, renderSitemap, siteUrlFor } from './modules/seo/crawl.service.js';
 import { apiV1 } from './routes/index.js';
 
 export function createApp() {
@@ -81,6 +82,18 @@ export function createApp() {
   app.use('/api/v1', apiV1());
   app.use('/api', notFound);
 
+  // ----- crawler files (search engines + AI assistants) -----
+  const text = (type, build) => async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600').type(type).send(await build(req));
+  };
+  app.get('/robots.txt', text('text/plain', (req) => renderRobots(siteUrlFor(req))));
+  app.get('/sitemap.xml', text('application/xml', async (req) => {
+    const c = await loadContent().catch(() => null);
+    return renderSitemap(siteUrlFor(req), c?.profile?.updatedAt ? new Date(c.profile.updatedAt) : undefined);
+  }));
+  app.get(['/llms.txt', '/llms-full.txt'], text('text/markdown; charset=utf-8', async (req) =>
+    renderLlmsTxt(await loadContent().catch(() => null), siteUrlFor(req))));
+
   // ----- frontend (production build) -----
   if (config.isProd) {
     app.use(express.static(config.distDir, { index: false, maxAge: '1y', immutable: true }));
@@ -88,7 +101,7 @@ export function createApp() {
     app.get('/{*path}', async (req, res) => {
       let html = template;
       try {
-        html = await renderIndexHtml(template);
+        html = await renderIndexHtml(template, await loadContent());
       } catch (err) {
         req.log.warn({ err }, 'SEO tags could not be rendered — serving defaults');
       }

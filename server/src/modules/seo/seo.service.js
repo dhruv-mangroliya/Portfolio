@@ -3,6 +3,7 @@
 import { config } from '../../config/env.js';
 import { isDbReady } from '../../db/connection.js';
 import { Profile } from '../../models/index.js';
+import { renderSnapshot } from './crawl.service.js';
 import { DEFAULT_SEO } from './seo.defaults.js';
 
 const esc = (s) =>
@@ -49,7 +50,9 @@ export function buildHeadTags(profile) {
 }
 
 /** index.html with up-to-date SEO tags (falls back to the built-in defaults if the DB isn't ready). */
-export async function renderIndexHtml(template) {
+export async function renderIndexHtml(template, content) {
   const profile = isDbReady() ? await Profile.findOne({ key: 'main' }).lean() : null;
-  return template.replace(BLOCK, buildHeadTags(profile));
+  return template
+    .replace(BLOCK, buildHeadTags(profile))
+    .replace('<div id="root"></div>', `<div id="root">${renderSnapshot(content)}</div>`);
 }
