@@ -52,7 +52,7 @@ export default function Messages() {
 
   return (
     <div className="page">
-      <PageHeader title="Messages" subtitle="Enquiries sent through the contact form on your website." icon="inbox" accent="orange" />
+      <PageHeader title="Inbox" subtitle="Messages sent through the contact form on your website." icon="inbox" accent="orange" />
 
       <div className="tabs" role="tablist">
         {[

@@ -748,3 +748,14 @@ textarea.ainput { resize: vertical; line-height: 1.5; }
 .todo-sec + .todo-sec { margin-top: 10px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--ink) 9%, transparent); border-top-left-radius: 0; border-top-right-radius: 0; }
 .todo-sec-head { margin-bottom: 2px; }
 .todo-col-head { margin-bottom: 4px; }
+
+/* collapsible Portfolio group in the sidebar */
+.side-group { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--od-6); }
+.side-group-btn { width: 100%; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.side-group-btn.has-active { color: var(--on-dark); }
+.side-group-chev { margin-left: auto; transition: transform 0.2s; opacity: 0.7; }
+.side-group-btn .badge + .side-group-chev { margin-left: 6px; }
+.side-group.open .side-group-chev { transform: rotate(180deg); }
+.side-group-items { display: grid; gap: 2px; margin: 2px 0 0 12px; padding-left: 8px; border-left: 1px solid var(--od-14); }
+.side-group-btn.has-active:not([aria-expanded="true"]) { background: var(--od-14); box-shadow: inset 3px 0 0 var(--p0); }
+.side-nav > .side-link:first-child { margin-top: 6px; }

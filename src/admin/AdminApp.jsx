@@ -108,14 +108,7 @@ function Shell() {
           </div>
 
           <nav className="side-nav" aria-label="Dashboard">
-            <p className="side-label">Portfolio</p>
-            <SideLink to="/admin" end icon="home" accent="violet">Overview</SideLink>
-            <SideLink to="/admin/profile" icon="user" accent="pink">Profile</SideLink>
-            {Object.entries(COLLECTIONS).map(([key, c]) => (
-              <SideLink key={key} to={`/admin/c/${key}`} icon={c.icon} accent={c.accent}>{c.label}</SideLink>
-            ))}
-            <SideLink to="/admin/messages" icon="inbox" accent="orange" badge={unread || null}>Messages</SideLink>
-            <SideLink to="/admin/appearance" icon="palette" accent="cyan">Appearance</SideLink>
+            <SideLink to="/admin/messages" icon="inbox" accent="orange" badge={unread || null}>Inbox</SideLink>
 
             <p className="side-label">Life tracker</p>
             <SideLink to="/admin/weight" icon="scale" accent="pink">Weight</SideLink>
@@ -128,6 +121,16 @@ function Shell() {
                 <em className="soon">Soon</em>
               </span>
             ))}
+
+            {/* Website editing tabs, folded into one group (rarely needed day to day). */}
+            <PortfolioGroup pathname={location.pathname}>
+              <SideLink to="/admin" end icon="home" accent="violet">Overview</SideLink>
+              <SideLink to="/admin/profile" icon="user" accent="pink">Profile</SideLink>
+              {Object.entries(COLLECTIONS).map(([key, c]) => (
+                <SideLink key={key} to={`/admin/c/${key}`} icon={c.icon} accent={c.accent}>{c.label}</SideLink>
+              ))}
+              <SideLink to="/admin/appearance" icon="palette" accent="cyan">Appearance</SideLink>
+            </PortfolioGroup>
           </nav>
 
           <div className="side-foot">
@@ -169,6 +172,44 @@ function Shell() {
         </div>
       </div>
     </AdminCtx.Provider>
+  );
+}
+
+const PORTFOLIO_PATHS = /^\/admin\/?($|profile|c\/|appearance)/;
+const GROUP_KEY = 'admin-portfolio-open';
+
+function PortfolioGroup({ pathname, children }) {
+  const inside = PORTFOLIO_PATHS.test(pathname);
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(GROUP_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const shown = open; // stays as you left it (collapsed by default); the button lights up when you're on one of its pages
+  const toggle = () => {
+    const next = !shown;
+    setOpen(next);
+    try {
+      localStorage.setItem(GROUP_KEY, next ? '1' : '0');
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  return (
+    <div className={cx('side-group', shown && 'open')}>
+      <button type="button" className={cx('side-link side-group-btn', inside && 'has-active')} onClick={toggle} aria-expanded={shown} aria-controls="side-portfolio">
+        <span className="side-icon a-violet"><Icon name="globe" size={16} /></span>
+        Portfolio
+        <Icon name="chevron-down" size={16} className="side-group-chev" />
+      </button>
+      {shown && (
+        <div id="side-portfolio" className="side-group-items">
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
