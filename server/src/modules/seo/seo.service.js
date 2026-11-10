@@ -54,5 +54,10 @@ export async function renderIndexHtml(template, content) {
   const profile = isDbReady() ? await Profile.findOne({ key: 'main' }).lean() : null;
   return template
     .replace(BLOCK, buildHeadTags(profile))
-    .replace('<div id="root"></div>', `<div id="root">${renderSnapshot(content)}</div>`);
+    .replace(
+      '<div id="root"></div>',
+      `<div id="root">${renderSnapshot(content)}</div>` +
+        // Same data the site would fetch from /api/v1/content — saves a request, and crawlers never see a loading/error state.
+        (content ? `\n    <script id="initial-content" type="application/json">${JSON.stringify(content).replace(/</g, '\\u003c')}</script>` : '')
+    );
 }

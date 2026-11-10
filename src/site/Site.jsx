@@ -18,8 +18,22 @@ import {
 } from './sections.jsx';
 import './site.css';
 
+// Content embedded in the page by the server (production) — used once, on the first render.
+let embedded = (() => {
+  try {
+    const el = document.getElementById('initial-content');
+    return el ? JSON.parse(el.textContent) : null;
+  } catch {
+    return null;
+  }
+})();
+
 export default function Site({ notFound = false }) {
-  const [state, setState] = useState({ status: 'loading', data: null, error: null });
+  const [state, setState] = useState(() => {
+    const data = embedded;
+    embedded = null; // later visits to this page in the same tab fetch fresh data
+    return data?.profile ? { status: 'ready', data, error: null } : { status: 'loading', data: null, error: null };
+  });
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -38,7 +52,9 @@ export default function Site({ notFound = false }) {
     return () => (cancelled = true);
   }, []);
 
-  useEffect(load, [load]);
+  useEffect(() => {
+    if (state.status !== 'ready') return load();
+  }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const d = state.data;
   useEffect(() => {

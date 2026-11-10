@@ -162,7 +162,7 @@ export function renderLlmsTxt(c, site) {
 const BOTS = ['*', 'Googlebot', 'Bingbot', 'GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot', 'Applebot-Extended', 'CCBot'];
 
 export function renderRobots(site) {
-  const rules = BOTS.map((b) => `User-agent: ${b}\nAllow: /\nDisallow: /admin\nDisallow: /api/\n`).join('\n');
+  const rules = BOTS.map((b) => `User-agent: ${b}\nAllow: /\nAllow: /api/v1/content\nAllow: /api/v1/media/\nDisallow: /admin\nDisallow: /api/\n`).join('\n');
   return `${rules}\nSitemap: ${site}sitemap.xml\n`;
 }
 
