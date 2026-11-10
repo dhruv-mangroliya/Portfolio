@@ -91,13 +91,11 @@ export default function Overview() {
             <section className="card life-card">
               <header className="card-head">
                 <h2><Icon name="chart" size={18} /> Life tracker</h2>
-                <em className="soon">Coming next</em>
               </header>
-              <p className="muted pad-x">Your spreadsheets are moving in here — log entries in seconds and see the trends as charts.</p>
               <ul className="life-list">
-                <li className="a-pink"><Icon name="scale" size={20} /><span><strong>Weight</strong> daily log, goal &amp; trend line</span></li>
-                <li className="a-lime"><Icon name="apple" size={20} /><span><strong>Diet</strong> meals, calories &amp; macros</span></li>
-                <li className="a-cyan"><Icon name="target" size={20} /><span><strong>Habits</strong> streaks &amp; weekly view</span></li>
+                <li className="a-pink"><Link to="/admin/weight"><Icon name="scale" size={20} /><span><strong>Weight</strong> daily log &amp; trend chart</span></Link></li>
+                <li className="a-lime"><Link to="/admin/diet"><Icon name="apple" size={20} /><span><strong>Diet &amp; meals</strong> protein, calories &amp; supplements</span></Link></li>
+                <li className="a-cyan"><Link to="/admin/todo"><Icon name="check" size={20} /><span><strong>To-do</strong> weekly board &amp; category targets</span></Link></li>
               </ul>
             </section>
           </div>

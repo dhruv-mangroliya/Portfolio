@@ -23,11 +23,6 @@ import './admin.css';
 const AdminCtx = createContext(null);
 export const useAdmin = () => useContext(AdminCtx);
 
-// Personal trackers planned next — shown in the sidebar so the structure is ready for them.
-const LIFE_TRACKERS = [
-  { key: 'habits', label: 'Habits', icon: 'target', accent: 'cyan' },
-];
-
 export default function AdminApp() {
   return (
     <ToastProvider>
@@ -114,13 +109,6 @@ function Shell() {
             <SideLink to="/admin/weight" icon="scale" accent="pink">Weight</SideLink>
             <SideLink to="/admin/diet" icon="apple" accent="lime">Diet & meals</SideLink>
             <SideLink to="/admin/todo" icon="check" accent="cyan">To-do</SideLink>
-            {LIFE_TRACKERS.map((t) => (
-              <span key={t.key} className="side-link disabled" title="Coming next">
-                <span className={cx('side-icon', `a-${t.accent}`)}><Icon name={t.icon} size={16} /></span>
-                {t.label}
-                <em className="soon">Soon</em>
-              </span>
-            ))}
 
             {/* Website editing tabs, folded into one group (rarely needed day to day). */}
             <PortfolioGroup pathname={location.pathname}>
