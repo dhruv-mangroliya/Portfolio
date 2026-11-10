@@ -106,14 +106,24 @@ export function createApp() {
   if (config.isProd) {
     app.use(express.static(config.distDir, { index: false, maxAge: '1y', immutable: true }));
     const template = fs.readFileSync(path.join(config.distDir, 'index.html'), 'utf8');
+    // Paths the React app actually has; anything else is a real 404 (the app still shows its "not found" page).
+    const isAppPath = (p) => p === '/' || p === '/index.html' || p === '/admin' || p.startsWith('/admin/');
     app.get('/{*path}', async (req, res) => {
+      const known = isAppPath(req.path);
+      const discovery = '</llms.txt>; rel="alternate"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"';
+      res.set({ Link: discovery, Vary: 'Accept' });
+      // AI agents asking for Markdown get the same content without the HTML.
+      if (known && !req.path.startsWith('/admin') && req.accepts(['text/html', 'text/markdown']) === 'text/markdown') {
+        const md = renderLlmsTxt(await loadContent().catch(() => null), siteUrlFor(req));
+        return res.set('Cache-Control', 'no-cache').type('text/markdown; charset=utf-8').send(md);
+      }
       let html = template;
       try {
         html = await renderIndexHtml(template, await loadContent());
       } catch (err) {
         req.log.warn({ err }, 'SEO tags could not be rendered — serving defaults');
       }
-      res.set('Cache-Control', 'no-cache').type('html').send(html);
+      res.status(known ? 200 : 404).set('Cache-Control', 'no-cache').type('html').send(html);
     });
   }
 

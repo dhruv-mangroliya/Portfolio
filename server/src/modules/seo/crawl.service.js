@@ -33,6 +33,10 @@ export function renderSnapshot(c) {
   if (p.role) out.push(`<p>${esc(p.role)}</p>`);
   if (p.tagline) out.push(`<p>${esc(p.tagline)}</p>`);
   if (p.intro) out.push(`<p>${esc(p.intro)}</p>`);
+  out.push('<nav aria-label="Sections"><ul>' +
+    [['about', 'About'], ['experience', 'Experience'], ['projects', 'Projects'], ['services', 'Services'], ['skills', 'Skills'], ['education', 'Education'], ['contact', 'Contact']]
+      .map(([h, t]) => `<li><a href="/#${h}">${t}</a></li>`).join('') +
+    '<li><a href="/llms.txt">Plain-text profile</a></li></ul></nav>');
   out.push('</header><main>');
 
   if (p.about?.length) out.push(`<section id="about"><h2>About</h2>${p.about.map((t) => `<p>${esc(t)}</p>`).join('')}</section>`);
@@ -112,6 +116,19 @@ export function renderLlmsTxt(c, site) {
   for (const [k, u] of Object.entries(p.socials || {})) if (isUrl(u)) L.push(`${label(k)}: ${u}`);
   if (isUrl(p.resumeUrl)) L.push(`Résumé: ${p.resumeUrl}`);
   L.push('');
+  L.push('## Key pages', '',
+    `- [Home](${site}): overview, intro and photo`,
+    `- [About](${site}#about): background and highlights`,
+    `- [Experience](${site}#experience): work history`,
+    `- [Projects](${site}#projects): selected work with links`,
+    `- [Services](${site}#services): what I can build for you`,
+    `- [Contact](${site}#contact): email and contact form`, '');
+  const ext = [
+    ...Object.entries(p.socials || {}).filter(([, u]) => isUrl(u)).map(([k, u]) => `- [${label(k)}](${u})`),
+    ...(isUrl(p.resumeUrl) ? [`- [Résumé](${p.resumeUrl})`] : []),
+    ...(c.projects || []).filter((x) => isUrl(x.liveUrl)).map((x) => `- [${x.title}](${x.liveUrl}): ${x.summary || x.category || 'project'}`),
+  ];
+  if (ext.length) L.push('## Links', '', ...ext, '');
   if (p.about?.length) L.push('## About', '', ...p.about.flatMap((t) => [t, '']));
   if (c.experience?.length) {
     L.push('## Experience', '');
@@ -162,8 +179,10 @@ export function renderLlmsTxt(c, site) {
 const BOTS = ['*', 'Googlebot', 'Bingbot', 'GPTBot', 'ChatGPT-User', 'OAI-SearchBot', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot', 'Applebot-Extended', 'CCBot'];
 
 export function renderRobots(site) {
-  const rules = BOTS.map((b) => `User-agent: ${b}\nAllow: /\nAllow: /api/v1/content\nAllow: /api/v1/media/\nDisallow: /admin\nDisallow: /api/\n`).join('\n');
-  return `${rules}\nSitemap: ${site}sitemap.xml\n`;
+  // contentsignals.org — how the content may be used: search results, AI answers and AI training are all fine.
+  const signal = 'Content-Signal: search=yes, ai-input=yes, ai-train=yes';
+  const rules = BOTS.map((b) => `User-agent: ${b}\n${signal}\nAllow: /\nAllow: /api/v1/content\nAllow: /api/v1/media/\nDisallow: /admin\nDisallow: /api/\n`).join('\n');
+  return `# Search engines and AI assistants are welcome. Content signals: https://contentsignals.org\n\n${rules}\nSitemap: ${site}sitemap.xml\n`;
 }
 
 export function renderSitemap(site, lastmod) {

@@ -11,26 +11,77 @@ const esc = (s) =>
 
 const BLOCK = /<!-- seo:start -->[\s\S]*?<!-- seo:end -->/;
 
-export function buildHeadTags(profile) {
+export function buildHeadTags(profile, content) {
   const title = profile?.seo?.title || DEFAULT_SEO.title;
   const description = profile?.seo?.description || DEFAULT_SEO.description;
   const site = config.siteUrl;
   const image = site && profile?.photo?.url ? new URL(profile.photo.url, site).href : '';
   const socials = Object.values(profile?.socials ?? {}).filter((u) => /^https?:\/\//.test(u));
 
+  const name = profile?.name || 'Dhruv Mangroliya';
+  const id = (frag) => `${site || '/'}#${frag}`;
   const person = {
-    '@context': 'https://schema.org',
     '@type': 'Person',
-    name: profile?.name || 'Dhruv Mangroliya',
+    '@id': id('person'),
+    name,
     jobTitle: profile?.role || 'Software Engineer',
     description,
     alumniOf: { '@type': 'CollegeOrUniversity', name: 'Indian Institute of Technology Guwahati' },
+    ...(profile?.email && { email: `mailto:${profile.email}` }),
+    ...(profile?.location && { homeLocation: { '@type': 'Place', name: profile.location } }),
     ...(site && { url: site }),
     ...(image && { image }),
     ...(socials.length && { sameAs: socials }),
+    ...(content?.skills?.length && { knowsAbout: content.skills.flatMap((g) => g.skills || []).slice(0, 40) }),
+  };
+  // The freelance side: what is offered, by whom, and how to get in touch.
+  const services = content?.services ?? [];
+  const business = {
+    '@type': 'ProfessionalService',
+    '@id': id('business'),
+    name: `${name} — Software Development`,
+    description,
+    ...(site && { url: site, logo: `${site}favicon.svg` }),
+    ...(image && { image }),
+    founder: { '@id': id('person') },
+    ...(profile?.email && {
+      email: profile.email,
+      contactPoint: { '@type': 'ContactPoint', contactType: 'sales', email: profile.email },
+    }),
+    ...(profile?.location && { address: { '@type': 'PostalAddress', addressLocality: profile.location.split(',')[0].trim(), addressCountry: 'IN' } }),
+    areaServed: 'Worldwide',
+    ...(socials.length && { sameAs: socials }),
+    ...(services.length && {
+      hasOfferCatalog: {
+        '@type': 'OfferCatalog',
+        name: 'Services',
+        itemListElement: services.map((s) => ({
+          '@type': 'Offer',
+          itemOffered: { '@type': 'Service', name: s.title, description: s.description || undefined, provider: { '@id': id('person') } },
+        })),
+      },
+    }),
+  };
+  const website = { '@type': 'WebSite', '@id': id('website'), name, ...(site && { url: site }), description, publisher: { '@id': id('person') }, inLanguage: 'en' };
+  const projects = (content?.projects ?? []).map((p) => ({
+    '@type': 'CreativeWork',
+    name: p.title,
+    ...(p.summary && { description: p.summary }),
+    ...(/^https?:\/\//.test(p.liveUrl || '') && { url: p.liveUrl }),
+    ...(p.tech?.length && { keywords: p.tech.join(', ') }),
+    creator: { '@id': id('person') },
+  }));
+  const page = {
+    '@type': 'ProfilePage',
+    '@id': id('page'),
+    name: title,
+    ...(site && { url: site }),
+    isPartOf: { '@id': id('website') },
+    mainEntity: { '@id': id('person') },
+    ...(projects.length && { hasPart: { '@type': 'ItemList', name: 'Projects', itemListElement: projects.map((item, i) => ({ '@type': 'ListItem', position: i + 1, item })) } }),
   };
   // JSON inside <script>: escape "<" so text can never close the tag.
-  const jsonLd = JSON.stringify(person).replace(/</g, '\\u003c');
+  const jsonLd = JSON.stringify({ '@context': 'https://schema.org', '@graph': [person, business, website, page] }).replace(/</g, '\\u003c');
 
   return [
     '<!-- seo:start -->',
@@ -53,7 +104,7 @@ export function buildHeadTags(profile) {
 export async function renderIndexHtml(template, content) {
   const profile = isDbReady() ? await Profile.findOne({ key: 'main' }).lean() : null;
   return template
-    .replace(BLOCK, buildHeadTags(profile))
+    .replace(BLOCK, buildHeadTags(profile, content))
     .replace(
       '<div id="root"></div>',
       `<div id="root">${renderSnapshot(content)}</div>` +
