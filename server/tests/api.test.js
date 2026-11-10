@@ -440,3 +440,51 @@ describe('diet tracker', () => {
     await agent.put('/api/v1/admin/diet/plan').send({ sessions: [{ id: 's', name: '', target: { protein: 0, calories: 0 }, items: [] }], supplements: [], preparations: [] }).expect(400);
   });
 });
+
+describe('to-do board', () => {
+  test('is private', async () => {
+    await request(app).get('/api/v1/admin/todo/week/2026-03-02').expect(401);
+  });
+
+  test('categories, tasks, move, tick, carry over', async () => {
+    const agent = await signedIn();
+    const T = '/api/v1/admin/todo';
+    const { body: { category: gym } } = await agent.post(`${T}/categories`).send({ name: 'Gym', color: 'lime', weeklyTarget: 3 }).expect(201);
+
+    // week of Mon 2 Mar 2026: two tasks, one done
+    const a = (await agent.post(`${T}/tasks`).send({ title: 'Leg day', categoryId: gym.id, weekStart: '2026-03-02', day: 0 }).expect(201)).body.task;
+    const b = (await agent.post(`${T}/tasks`).send({ title: 'Push day', categoryId: gym.id, weekStart: '2026-03-02', day: 2 }).expect(201)).body.task;
+    await agent.patch(`${T}/tasks/${a.id}`).send({ done: true }).expect(200);
+    assert.equal(b.priority, 'medium'); // default
+    assert.equal((await agent.patch(`${T}/tasks/${b.id}`).send({ priority: 'high' }).expect(200)).body.task.priority, 'high');
+    await agent.patch(`${T}/tasks/${b.id}`).send({ priority: 'urgent' }).expect(400);
+    const moved = (await agent.patch(`${T}/tasks/${b.id}`).send({ day: 4, order: 0.5 }).expect(200)).body.task;
+    assert.equal(moved.day, 4);
+
+    let res = await agent.get(`${T}/week/2026-03-02`).expect(200);
+    assert.equal(res.body.tasks.length, 2);
+    assert.equal(res.body.categories[0].weeklyTarget, 3);
+
+    // next week: the unfinished one rolls to Monday, the finished one stays
+    res = await agent.post(`${T}/rollover`).send({ weekStart: '2026-03-09' }).expect(200);
+    assert.equal(res.body.moved, 1);
+    res = await agent.get(`${T}/week/2026-03-09`).expect(200);
+    assert.deepEqual(res.body.tasks.map((t) => [t.title, t.day, t.carriedFrom]), [['Push day', 0, '2026-03-02']]);
+    assert.equal((await agent.get(`${T}/week/2026-03-02`)).body.tasks.length, 1);
+
+    // deleting a category keeps its tasks
+    await agent.delete(`${T}/categories/${gym.id}`).expect(204);
+    res = await agent.get(`${T}/week/2026-03-09`).expect(200);
+    assert.equal(res.body.tasks[0].categoryId, null);
+  });
+
+  test('weeks must start on Monday; bad input rejected', async () => {
+    const agent = await signedIn();
+    const ok = await agent.post('/api/v1/admin/todo/categories').send({ name: 'Custom', color: '#AB12CD', weeklyTarget: 2 }).expect(201);
+    assert.equal(ok.body.category.color, '#ab12cd');
+    await agent.post('/api/v1/admin/todo/categories').send({ name: 'Bad', color: 'red; background:url(x)' }).expect(400);
+    await agent.get('/api/v1/admin/todo/week/2026-03-03').expect(400);
+    await agent.post('/api/v1/admin/todo/tasks').send({ title: '', weekStart: '2026-03-02' }).expect(400);
+    await agent.post('/api/v1/admin/todo/tasks').send({ title: 'x', weekStart: '2026-03-02', day: 7 }).expect(400);
+  });
+});

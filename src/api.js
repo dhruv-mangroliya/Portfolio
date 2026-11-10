@@ -60,6 +60,16 @@ export const api = {
   dietDay: (date) => request('GET', `/admin/diet/days/${date}`),
   saveDietDay: (date, day) => request('PUT', `/admin/diet/days/${date}`, day),
 
+  // To-do board
+  todoWeek: (monday) => request('GET', `/admin/todo/week/${monday}`),
+  todoRollover: (weekStart) => request('POST', '/admin/todo/rollover', { weekStart }),
+  addTask: (data) => request('POST', '/admin/todo/tasks', data),
+  updateTask: (id, data) => request('PATCH', `/admin/todo/tasks/${id}`, data),
+  deleteTask: (id) => request('DELETE', `/admin/todo/tasks/${id}`),
+  addTodoCategory: (data) => request('POST', '/admin/todo/categories', data),
+  updateTodoCategory: (id, data) => request('PATCH', `/admin/todo/categories/${id}`, data),
+  deleteTodoCategory: (id) => request('DELETE', `/admin/todo/categories/${id}`),
+
   // auth
   login: (username, password) => request('POST', '/auth/login', { username, password }).then((d) => d.user),
   logout: () => request('POST', '/auth/logout'),

@@ -14,6 +14,7 @@ import Settings from './pages/Settings.jsx';
 import Weight from './pages/Weight.jsx';
 import Diet from './pages/Diet.jsx';
 import DietPlan from './pages/DietPlan.jsx';
+import Todo from './pages/Todo.jsx';
 import { COLLECTIONS } from './schema.js';
 import { ConfirmProvider, ErrorBox, ToastProvider } from './ui.jsx';
 import { useNoIndex } from './hooks.js';
@@ -119,6 +120,7 @@ function Shell() {
             <p className="side-label">Life tracker</p>
             <SideLink to="/admin/weight" icon="scale" accent="pink">Weight</SideLink>
             <SideLink to="/admin/diet" icon="apple" accent="lime">Diet & meals</SideLink>
+            <SideLink to="/admin/todo" icon="check" accent="cyan">To-do</SideLink>
             {LIFE_TRACKERS.map((t) => (
               <span key={t.key} className="side-link disabled" title="Coming next">
                 <span className={cx('side-icon', `a-${t.accent}`)}><Icon name={t.icon} size={16} /></span>
@@ -160,6 +162,7 @@ function Shell() {
               <Route path="weight" element={<Weight />} />
               <Route path="diet" element={<Diet />} />
               <Route path="diet/plan" element={<DietPlan />} />
+              <Route path="todo" element={<Todo />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Routes>
           </main>

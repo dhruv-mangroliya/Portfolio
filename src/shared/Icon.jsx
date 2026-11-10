@@ -1,6 +1,8 @@
 // Inline stroke icons (24×24, Lucide-style) — no icon font or extra requests.
 const P = {
   'chevron-left': 'M15 18l-6-6 6-6',
+  minus: 'M5 12h14',
+  'chevron-down': 'M6 9l6 6 6-6',
   'chevron-right': 'M9 18l6-6-6-6',
   'arrow-up': 'M12 19V5|M5 12l7-7 7 7',
   'arrow-down': 'M12 5v14|M19 12l-7 7-7-7',
