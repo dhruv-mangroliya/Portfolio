@@ -12,6 +12,9 @@ import { config } from './config/env.js';
 import { logger } from './config/logger.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimiters.js';
+import { faviconSvg } from '../../src/shared/theme.js';
+import { waitForDb } from './db/connection.js';
+import { DEFAULT_THEME, getTheme } from './modules/theme/theme.service.js';
 import { renderIndexHtml } from './modules/seo/seo.service.js';
 import { loadContent, renderLlmsTxt, renderRobots, renderSitemap, siteUrlFor } from './modules/seo/crawl.service.js';
 import { apiV1 } from './routes/index.js';
@@ -86,6 +89,11 @@ export function createApp() {
   const text = (type, build) => async (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600').type(type).send(await build(req));
   };
+  // Tab icon in the current theme colours (Google's search results use it too).
+  app.get('/favicon.svg', async (_req, res) => {
+    const theme = (await waitForDb(5_000)) ? await getTheme().catch(() => DEFAULT_THEME) : DEFAULT_THEME;
+    res.set('Cache-Control', 'public, max-age=3600').type('image/svg+xml').send(faviconSvg(theme));
+  });
   app.get('/robots.txt', text('text/plain', (req) => renderRobots(siteUrlFor(req))));
   app.get('/sitemap.xml', text('application/xml', async (req) => {
     const c = await loadContent().catch(() => null);

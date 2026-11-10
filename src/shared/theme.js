@@ -136,11 +136,22 @@ export function themeToVars(theme = DEFAULT_THEME) {
 }
 
 /** Applies a theme to an element (default: the whole page) and remembers it for the next visit. */
+/** Browser-tab icon in the theme's colours — same look as the "DM" logo in the navbar. */
+export function faviconSvg(theme = DEFAULT_THEME, text = 'DM') {
+  const primary = theme.colors?.primary || DEFAULT_THEME.colors.primary;
+  const grad = theme.gradient?.length >= 2 ? theme.gradient : [primary, mix(primary, '#ffffff', 0.25)];
+  const ink = themeToVars(theme)['--on-grad'];
+  const stops = grad.map((c, i) => `<stop offset="${i / (grad.length - 1)}" stop-color="${c}"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">${stops}</linearGradient></defs><rect width="64" height="64" rx="18" fill="url(#g)"/><text x="32" y="42" font-family="Arial, sans-serif" font-size="26" font-weight="800" fill="${ink}" text-anchor="middle">${text}</text></svg>`;
+}
+
 export function applyTheme(theme, el = document.documentElement, { remember = el === document.documentElement } = {}) {
   const vars = themeToVars(theme);
   for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
   if (remember) {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.colors.primary);
+    const icon = document.querySelector('link[rel="icon"]');
+    if (icon) icon.href = `data:image/svg+xml,${encodeURIComponent(faviconSvg(theme))}`;
     try {
       localStorage.setItem('site-theme', JSON.stringify(theme));
     } catch {
