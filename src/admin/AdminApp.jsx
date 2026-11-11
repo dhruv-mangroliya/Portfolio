@@ -15,6 +15,7 @@ import Weight from './pages/Weight.jsx';
 import Diet from './pages/Diet.jsx';
 import DietPlan from './pages/DietPlan.jsx';
 import Todo from './pages/Todo.jsx';
+import Money from './pages/Money.jsx';
 import { COLLECTIONS } from './schema.js';
 import { ConfirmProvider, ErrorBox, ToastProvider } from './ui.jsx';
 import { useNoIndex } from './hooks.js';
@@ -109,6 +110,7 @@ function Shell() {
             <SideLink to="/admin/weight" icon="scale" accent="pink">Weight</SideLink>
             <SideLink to="/admin/diet" icon="apple" accent="lime">Diet & meals</SideLink>
             <SideLink to="/admin/todo" icon="check" accent="cyan">To-do</SideLink>
+            <SideLink to="/admin/money" icon="wallet" accent="lime">Money</SideLink>
 
             {/* Website editing tabs, folded into one group (rarely needed day to day). */}
             <PortfolioGroup pathname={location.pathname}>
@@ -154,6 +156,7 @@ function Shell() {
               <Route path="diet" element={<Diet />} />
               <Route path="diet/plan" element={<DietPlan />} />
               <Route path="todo" element={<Todo />} />
+              <Route path="money" element={<Money />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Routes>
           </main>

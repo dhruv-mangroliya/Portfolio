@@ -17,6 +17,9 @@ export class ApiError extends Error {
 }
 
 let onUnauthorized = null;
+// Money tab passcode — kept in memory only while the Money tab is unlocked.
+let moneyPasscode = '';
+export const setMoneyPasscode = (code) => (moneyPasscode = code || '');
 /** The admin app registers a handler to redirect to the login page when a session expires. */
 export const setUnauthorizedHandler = (fn) => (onUnauthorized = fn);
 
@@ -26,7 +29,10 @@ async function request(method, path, body) {
     res = await fetch(BASE + path, {
       method,
       credentials: 'same-origin',
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+      headers: {
+        ...(body !== undefined && { 'Content-Type': 'application/json' }),
+        ...(path.startsWith('/admin/money') && moneyPasscode && { 'X-Money-Passcode': moneyPasscode }),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
@@ -69,6 +75,12 @@ export const api = {
   addTodoCategory: (data) => request('POST', '/admin/todo/categories', data),
   updateTodoCategory: (id, data) => request('PATCH', `/admin/todo/categories/${id}`, data),
   deleteTodoCategory: (id) => request('DELETE', `/admin/todo/categories/${id}`),
+
+  // Money tracker — kind: 'incomes' | 'targets' | 'accounts'
+  money: () => request('GET', '/admin/money'),
+  moneyAdd: (kind, data) => request('POST', `/admin/money/${kind}`, data),
+  moneyUpdate: (kind, id, data) => request('PATCH', `/admin/money/${kind}/${id}`, data),
+  moneyDelete: (kind, id) => request('DELETE', `/admin/money/${kind}/${id}`),
 
   // auth
   login: (username, password) => request('POST', '/auth/login', { username, password }).then((d) => d.user),

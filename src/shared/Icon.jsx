@@ -1,5 +1,9 @@
 // Inline stroke icons (24×24, Lucide-style) — no icon font or extra requests.
 const P = {
+  lock: 'M6 11h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z|M8 11V7a4 4 0 0 1 8 0v4',
+  unlock: 'M6 11h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z|M8 11V7a4 4 0 0 1 7.9-.9',
+  wallet: 'M20 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V5|M16 13h.01',
+  x: 'M18 6L6 18|M6 6l12 12',
   'chevron-left': 'M15 18l-6-6 6-6',
   minus: 'M5 12h14',
   'chevron-down': 'M6 9l6 6 6-6',

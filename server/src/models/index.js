@@ -12,3 +12,4 @@ export { User } from './User.js';
 export { WeightEntry } from './WeightEntry.js';
 export { DietDay, DietPlan } from './Diet.js';
 export { TodoCategory, TodoTask } from './Todo.js';
+export { IncomeEntry, MoneyAccount, MoneyTransfer } from './Money.js';

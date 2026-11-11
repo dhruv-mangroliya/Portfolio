@@ -16,6 +16,15 @@ const TEST_URI = process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/dhru
 const PASSWORD = 'correct-horse-battery';
 const app = createApp();
 
+/** Adds the Money passcode header to every request an agent makes. */
+function withPasscode(agent) {
+  for (const m of ['get', 'post', 'patch', 'put', 'delete']) {
+    const orig = agent[m].bind(agent);
+    agent[m] = (...args) => orig(...args).set('X-Money-Passcode', '18');
+  }
+  return agent;
+}
+
 /** Returns a supertest agent that keeps cookies, already signed in. */
 async function signedIn(password = PASSWORD) {
   const agent = request.agent(app);
@@ -486,5 +495,52 @@ describe('to-do board', () => {
     await agent.get('/api/v1/admin/todo/week/2026-03-03').expect(400);
     await agent.post('/api/v1/admin/todo/tasks').send({ title: '', weekStart: '2026-03-02' }).expect(400);
     await agent.post('/api/v1/admin/todo/tasks').send({ title: 'x', weekStart: '2026-03-02', day: 7 }).expect(400);
+  });
+});
+
+describe('money tracker', () => {
+  test('is private', async () => {
+    await request(app).get('/api/v1/admin/money').expect(401);
+  });
+
+  test('needs the passcode even when signed in', async () => {
+    const agent = await signedIn();
+    let res = await agent.get('/api/v1/admin/money').expect(403);
+    assert.equal(res.body.error.code, 'PASSCODE_REQUIRED');
+    await agent.get('/api/v1/admin/money').set('X-Money-Passcode', '17').expect(403);
+    await agent.get('/api/v1/admin/money').set('X-Money-Passcode', '18').expect(200);
+  });
+
+  test('income, places and entries', async () => {
+    const agent = withPasscode(await signedIn());
+    const M = '/api/v1/admin/money';
+    let res = await agent.get(M).expect(200);
+    assert.deepEqual(res.body.accounts.map((a) => a.name), ['Bank', 'Mutual funds']); // defaults
+    const [bank, mf] = res.body.accounts;
+
+    await agent.post(`${M}/incomes`).send({ month: '2026-01', amount: '85000.5', source: 'Salary' }).expect(201);
+    await agent.post(`${M}/incomes`).send({ month: '2026-01', amount: 15000, source: 'Freelance' }).expect(201);
+
+    await agent.post(`${M}/transfers`).send({ accountId: bank.id, amount: 30000, date: '2026-01-05', note: 'Salary saved' }).expect(201);
+    await agent.post(`${M}/transfers`).send({ accountId: mf.id, amount: '20000', date: '2026-01-10' }).expect(201);
+    const w = (await agent.post(`${M}/transfers`).send({ accountId: bank.id, amount: -5000, date: '2026-02-01', note: 'Rent' }).expect(201)).body.item;
+    await agent.post(`${M}/transfers`).send({ accountId: bank.id, amount: 0, date: '2026-02-01' }).expect(400);
+
+    res = await agent.get(M).expect(200);
+    assert.equal(res.body.incomes.reduce((a, e) => a + e.amount, 0), 100000.5);
+    assert.deepEqual(res.body.transfers.map((t) => [t.date, t.amount]), [['2026-02-01', -5000], ['2026-01-10', 20000], ['2026-01-05', 30000]]);
+    await agent.delete(`${M}/transfers/${w.id}`).expect(204);
+
+    // deleting a place removes its amounts
+    await agent.delete(`${M}/accounts/${bank.id}`).expect(204);
+    res = await agent.get(M).expect(200);
+    assert.deepEqual(res.body.transfers.map((t) => t.amount), [20000]); // only the Mutual funds entry is left
+  });
+
+  test('rejects bad input', async () => {
+    const agent = withPasscode(await signedIn());
+    await agent.post('/api/v1/admin/money/incomes').send({ month: '2026-13', amount: 1 }).expect(400);
+    await agent.post('/api/v1/admin/money/incomes').send({ month: '2026-01', amount: -1 }).expect(400);
+    await agent.post('/api/v1/admin/money/transfers').send({ accountId: '0123456789abcdef01234567', amount: 5, date: '2026-01-01' }).expect(400);
   });
 });
