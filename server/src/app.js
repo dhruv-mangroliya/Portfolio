@@ -26,6 +26,13 @@ export function createApp() {
   app.disable('x-powered-by');
   if (config.http.trustProxy) app.set('trust proxy', config.http.trustProxy);
 
+  // One address for search engines: www.example.com/… → example.com/… (permanent).
+  app.use((req, res, next) => {
+    const host = req.headers.host || '';
+    if (!/^www\./i.test(host)) return next();
+    res.redirect(301, `https://${host.slice(4)}${req.originalUrl}`);
+  });
+
   // ----- observability: request id + one compact log line per API request -----
   app.use(
     pinoHttp({
