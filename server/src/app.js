@@ -114,7 +114,14 @@ export function createApp() {
 
   // ----- frontend (production build) -----
   if (config.isProd) {
-    app.use(express.static(config.distDir, { index: false, maxAge: '1y', immutable: true }));
+    // Hashed build files (/assets/*) never change → cache for a year. Fixed names (favicon, icons, manifest) → 1 day.
+    app.use(
+      express.static(config.distDir, {
+        index: false,
+        setHeaders: (res, file) =>
+          res.set('Cache-Control', file.includes(`${path.sep}assets${path.sep}`) ? 'public, max-age=31536000, immutable' : 'public, max-age=86400'),
+      })
+    );
     const template = fs.readFileSync(path.join(config.distDir, 'index.html'), 'utf8');
     // Paths the React app actually has; anything else is a real 404 (the app still shows its "not found" page).
     const isAppPath = (p) => p === '/' || p === '/index.html' || p === '/admin' || p.startsWith('/admin/');

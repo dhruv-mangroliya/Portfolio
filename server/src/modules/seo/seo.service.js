@@ -41,7 +41,7 @@ export function buildHeadTags(profile, content) {
     '@id': id('business'),
     name: `${name} — Software Development`,
     description,
-    ...(site && { url: site, logo: `${site}favicon.svg` }),
+    ...(site && { url: site, logo: `${site}icons/icon-512.png` }),
     ...(image && { image }),
     founder: { '@id': id('person') },
     ...(profile?.email && {

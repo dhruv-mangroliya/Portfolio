@@ -189,7 +189,10 @@ function layout({ site, theme, name, path, title, description, schemaType, hero,
 <title>${esc(title)} — ${esc(name)}</title>
 <meta name="description" content="${esc(description)}" />
 <link rel="canonical" href="${esc(url)}" />
+<link rel="icon" href="/favicon.ico" sizes="48x48" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(faviconSvg(theme))}" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="alternate" type="text/markdown" href="/llms.txt" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="${esc(title)} — ${esc(name)}" />

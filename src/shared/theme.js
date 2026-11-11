@@ -150,7 +150,7 @@ export function applyTheme(theme, el = document.documentElement, { remember = el
   for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
   if (remember) {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.colors.primary);
-    const icon = document.querySelector('link[rel="icon"]');
+    const icon = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
     if (icon) icon.href = `data:image/svg+xml,${encodeURIComponent(faviconSvg(theme))}`;
     try {
       localStorage.setItem('site-theme', JSON.stringify(theme));
