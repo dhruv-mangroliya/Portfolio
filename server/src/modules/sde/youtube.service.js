@@ -118,3 +118,29 @@ export async function refetch(track) {
   const r = await playlistVideos(track.sourceId);
   return track.kind === 'channel' ? r.videos.reverse() : r.videos;
 }
+
+/** The video id in a YouTube watch / short / youtu.be link, or ''. */
+export function videoIdFrom(url) {
+  try {
+    const u = new URL(url);
+    if (/(^|\.)youtu\.be$/i.test(u.hostname)) return u.pathname.slice(1, 12);
+    if (!/(^|\.)youtube\.com$/i.test(u.hostname)) return '';
+    const v = u.searchParams.get('v');
+    if (v) return v.slice(0, 11);
+    return u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/)?.[1] ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** A video's title through YouTube's public oEmbed endpoint ('' if it can't be read). */
+export async function videoTitle(videoId) {
+  try {
+    const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}`, {
+      signal: AbortSignal.timeout(8_000),
+    });
+    return res.ok ? String((await res.json()).title || '') : '';
+  } catch {
+    return '';
+  }
+}

@@ -440,7 +440,7 @@ describe('diet tracker', () => {
     };
     await agent.put('/api/v1/admin/diet/days/2026-03-03').send(day).expect(200);
     res = await agent.get('/api/v1/admin/diet/days?from=2026-03-01&to=2026-03-31').expect(200);
-    assert.deepEqual(res.body.days, [{ date: '2026-03-03', protein: 22, calories: 440, items: 2, supplements: 1 }]);
+    assert.deepEqual(res.body.days, [{ date: '2026-03-03', protein: 22, calories: 440, items: 2, supplements: 1, supplementIds: ['b12'] }]);
   });
 
   test('rejects bad input', async () => {
@@ -595,8 +595,9 @@ describe('SDE-2 courses', () => {
     globalThis.fetch = async (url, init) => {
       if (!String(url).startsWith('https://www.youtube.com/')) return realFetch(url, init);
       if (youtubeDown) return new Response('', { status: 429 });
-      const body = JSON.parse(init.body);
+      const body = init?.body ? JSON.parse(init.body) : {};
       const json = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      if (String(url).includes('/oembed')) return json({ title: 'Fetched video title' });
       if (String(url).includes('resolve_url')) return json({ endpoint: { browseEndpoint: { browseId: 'UCaaaaaaaaaaaaaaaaaaaaaa' } } });
       if (body.browseId === 'VLPLtest1234567890') return json({ header: { playlistHeaderRenderer: { title: { simpleText: 'DSA Course' }, ownerText: { runs: [{ text: 'Teacher' }] } } }, contents: { list: [lockup('v1', 'Intro'), lockup('v2', 'Arrays'), more('p2')] } });
       if (body.continuation === 'p2') return json({ onResponseReceivedActions: [{ items: [lockup('v3', 'Linked lists')] }] });
@@ -646,5 +647,45 @@ describe('SDE-2 courses', () => {
     await agent.post(`${S}/${r.track.id}/refresh`).expect(502);
     youtubeDown = false;
     assert.equal((await agent.post(`${S}/${r.track.id}/refresh`).expect(200)).body.track.videos.length, 3);
+  });
+
+  test('own list: lessons from lines, add / edit / move / delete keep ticks right', async () => {
+    const agent = await signedIn();
+    await agent.post(S).send({ title: '', items: [{ title: 'A', url: '' }] }).expect(400);
+    await agent.post(S).send({ title: 'X', items: [{ title: '', url: '' }] }).expect(400);
+    await agent.post(S).send({ title: 'X', items: [{ title: 'A', url: 'javascript:alert(1)' }] }).expect(400);
+
+    let t = (await agent.post(S).send({ title: 'System design', items: [
+      { title: 'URL shortener', url: '' },
+      { title: '', url: 'https://youtu.be/abcdefghijk' },
+      { title: 'Blog post', url: 'https://example.com/post' },
+    ] }).expect(201)).body.track;
+    assert.equal(t.kind, 'manual');
+    assert.equal(t.total, 3);
+    assert.equal(t.videos[1].title, 'Fetched video title', 'YouTube link without a name gets its title');
+    assert.equal(t.videos[1].videoId, 'abcdefghijk');
+
+    t = (await agent.post(`${S}/${t.id}/items`).send({ items: [{ title: 'Mock interview', url: '' }] }).expect(201)).body.track;
+    assert.equal(t.total, 4);
+    assert.equal(t.videos[3].title, 'Mock interview');
+
+    t = (await agent.put(`${S}/${t.id}/done`).send({ lessons: [1, 3], done: true }).expect(200)).body.track;
+    t = (await agent.post(`${S}/${t.id}/items/1/move`).send({ to: 4 }).expect(200)).body.track; // URL shortener → L-4
+    assert.deepEqual(t.videos.map((v) => v.title), ['Fetched video title', 'Blog post', 'Mock interview', 'URL shortener']);
+    assert.deepEqual([...t.done].sort(), [2, 4], 'ticks follow the moved lessons');
+
+    t = (await agent.delete(`${S}/${t.id}/items/1`).expect(200)).body.track;
+    assert.equal(t.total, 3);
+    assert.deepEqual([...t.done].sort(), [1, 3], 'later lessons move up a number');
+
+    t = (await agent.patch(`${S}/${t.id}/items/2`).send({ title: 'Mock #1', url: 'https://example.com/mock' }).expect(200)).body.track;
+    assert.equal(t.videos[1].title, 'Mock #1');
+    await agent.patch(`${S}/${t.id}/items/9`).send({ title: 'nope' }).expect(404);
+    t = (await agent.patch(`${S}/${t.id}`).send({ title: 'SD', total: 99 }).expect(200)).body.track;
+    assert.equal(t.total, 3, "an own list's X is its lesson count");
+
+    // YouTube courses can't be edited lesson by lesson
+    const yt = (await agent.get(S).expect(200)).body.tracks.find((x) => x.kind !== 'manual');
+    await agent.post(`${S}/${yt.id}/items`).send({ items: [{ title: 'x', url: '' }] }).expect(400);
   });
 });

@@ -1,7 +1,8 @@
 // SDE-2 prep: a YouTube playlist or channel followed lesson by lesson (L-1 … L-X).
 import { Schema, model, str, toJSON } from './_shared.js';
 
-const video = new Schema({ videoId: String, title: String, duration: String }, { _id: false });
+// A lesson. YouTube courses fill videoId; your own lists use title + optional url (any link).
+const video = new Schema({ videoId: String, title: String, duration: String, url: String }, { _id: false });
 
 const schema = new Schema(
   {

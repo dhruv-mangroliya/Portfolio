@@ -85,6 +85,10 @@ export const api = {
   refreshSde: (id) => request('POST', `/admin/sde/${id}/refresh`),
   markSde: (id, lessons, done) => request('PUT', `/admin/sde/${id}/done`, { lessons, done }),
   deleteSde: (id) => request('DELETE', `/admin/sde/${id}`),
+  addSdeItems: (id, items) => request('POST', `/admin/sde/${id}/items`, { items }),
+  updateSdeItem: (id, n, data) => request('PATCH', `/admin/sde/${id}/items/${n}`, data),
+  moveSdeItem: (id, n, to) => request('POST', `/admin/sde/${id}/items/${n}/move`, { to }),
+  deleteSdeItem: (id, n) => request('DELETE', `/admin/sde/${id}/items/${n}`),
 
   // Money tracker — kind: 'incomes' | 'targets' | 'accounts'
   money: () => request('GET', '/admin/money'),

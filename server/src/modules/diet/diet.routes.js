@@ -58,7 +58,7 @@ export const dietRoutes = Router()
     const filter = from || to ? { date: { ...(from && { $gte: from }), ...(to && { $lte: to }) } } : {};
     const days = await DietDay.find(filter).sort({ date: 1 }).lean();
     res.json({
-      days: days.map((d) => ({ date: d.date, ...totals(d), items: d.items.length + d.extras.length, supplements: d.supplements.length })),
+      days: days.map((d) => ({ date: d.date, ...totals(d), items: d.items.length + d.extras.length, supplements: d.supplements.length, supplementIds: d.supplements })),
     });
   })
   .get('/days/:date', validate({ params: z.object({ date: zDate }) }), async (req, res) => {

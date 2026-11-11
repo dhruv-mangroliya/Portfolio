@@ -681,7 +681,7 @@ function WealthTab({ data, setData, mutate, year }) {
   const [newAcc, setNewAcc] = useState({ name: '', color: ACCOUNT_COLORS[accounts.length % ACCOUNT_COLORS.length] });
   const [filter, setFilter] = useState(null); // accountId | null
   const [showAll, setShowAll] = useState(false);
-  const [placesOpen, setPlacesOpen] = useState(accounts.length === 0);
+  const [placesOpen, setPlacesOpen] = useState(false);
 
   const totals = accounts.map((a) => ({ ...a, total: sum(transfers.filter((t) => t.accountId === a.id)) }));
   const grand = sum(totals, (a) => a.total);
@@ -718,9 +718,14 @@ function WealthTab({ data, setData, mutate, year }) {
   return (
     <>
       <section className="card money-holdings">
-        <div className="mh-head">
-          <span className="k">Total saved & invested</span>
-          <strong>{inr(grand)}</strong>
+        <div className="mh-top">
+          <div className="mh-head">
+            <span className="k">Total saved & invested</span>
+            <strong>{inr(grand)}</strong>
+          </div>
+          <button type="button" className="abtn abtn-sm" onClick={() => setPlacesOpen(true)} aria-haspopup="dialog">
+            <Icon name="settings" size={15} /> Manage places
+          </button>
         </div>
         {positiveSum > 0 && (
           <div className="mh-bar" role="img" aria-label={positive.map((a) => `${a.name} ${Math.round((a.total / positiveSum) * 100)}%`).join(', ')}>
@@ -747,7 +752,7 @@ function WealthTab({ data, setData, mutate, year }) {
           {accounts.length ? (
             <TransferForm accounts={accounts} defaultAccount={filter} onAdd={addTransfer} />
           ) : (
-            <p className="money-empty">Add a place on the right first (Bank, Mutual funds…).</p>
+            <p className="money-empty">Add a place first (Bank, Mutual funds…). <button type="button" className="abtn abtn-sm" onClick={() => setPlacesOpen(true)}><Icon name="plus" size={14} /> Add a place</button></p>
           )}
 
           <header className="card-head money-subhead">
@@ -793,13 +798,10 @@ function WealthTab({ data, setData, mutate, year }) {
           )}
         </section>
 
-        <section className={cx('card money-card places-card', placesOpen && 'open')}>
-          <button type="button" className="places-toggle" onClick={() => setPlacesOpen((o) => !o)} aria-expanded={placesOpen} aria-controls="places-body">
-            <h2><Icon name="settings" size={18} /> Manage places <small>{accounts.length}</small></h2>
-            <Icon name="chevron-down" size={18} className="places-chev" />
-          </button>
-          {placesOpen && (
-          <div id="places-body">
+      </div>
+
+      {placesOpen && (
+        <PlacesModal onClose={() => setPlacesOpen(false)}>
           <p className="money-help">Where you keep money — bank, mutual funds, stocks, FD, PPF…</p>
           <ul className="acc-list">
             {accounts.map((a) => (
@@ -811,11 +813,33 @@ function WealthTab({ data, setData, mutate, year }) {
             <input className="ainput" maxLength={40} placeholder="Add a place, e.g. Stocks" value={newAcc.name} onChange={(e) => setNewAcc((x) => ({ ...x, name: e.target.value }))} aria-label="New place name" />
             <button className="abtn" disabled={!newAcc.name.trim()}><Icon name="plus" size={15} /> Add</button>
           </form>
-          </div>
-          )}
-        </section>
-      </div>
+        </PlacesModal>
+      )}
     </>
+  );
+}
+
+function PlacesModal({ onClose, children }) {
+  const ref = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    ref.current?.focus();
+    // Ignore Escape while a confirm dialog is open on top of this one.
+    const onKey = (e) => e.key === 'Escape' && !document.querySelector('[role="alertdialog"]') && closeRef.current();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  return (
+    <div className="modal-backdrop places-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal places-modal" role="dialog" aria-modal="true" aria-labelledby="places-title" ref={ref} tabIndex={-1}>
+        <header className="places-modal-head">
+          <h2 id="places-title"><Icon name="settings" size={18} /> Places</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="x" size={18} /></button>
+        </header>
+        {children}
+      </div>
+    </div>
   );
 }
 

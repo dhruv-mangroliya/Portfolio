@@ -18,6 +18,9 @@ const newId = () => (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).
 const sum = (list, key) => list.reduce((a, x) => a + (Number(x[key]) || 0), 0);
 const n0 = (n) => Math.round(n).toLocaleString();
 
+/** Daily goal, always the same whatever the plan adds up to. */
+export const DAILY_TARGET = { protein: 100, calories: 2000 };
+
 export default function Diet() {
   const toast = useToast();
   const [plan, setPlan] = useState(null);
@@ -100,10 +103,27 @@ export default function Diet() {
   }
   const toggleIn = (key, id) => update((d) => ({ ...d, [key]: d[key].includes(id) ? d[key].filter((x) => x !== id) : [...d[key], id] }));
 
-  const target = useMemo(
-    () => (plan ? { protein: sum(plan.sessions.map((s) => s.target), 'protein'), calories: sum(plan.sessions.map((s) => s.target), 'calories') } : null),
-    [plan]
-  );
+  const target = DAILY_TARGET; // fixed — the plan's session targets are only a guide
+
+  // Weekly supplement reminder: due on its weekday; if it wasn't ticked then, it carries forward
+  // to each following day until it is (and resets on the next due day).
+  const rem = plan ? dueReminder(date, plan.supplements) : null;
+  const [takenEarlier, setTakenEarlier] = useState(null);
+  const remItemId = rem?.item?.id;
+  const remDue = rem?.dueDate;
+  useEffect(() => {
+    setTakenEarlier(null);
+    if (!remItemId || remDue === date) return undefined;
+    let cancelled = false;
+    api
+      .dietDays({ from: remDue, to: shift(date, -1) })
+      .then((r) => !cancelled && setTakenEarlier(r.days.some((d) => d.supplementIds?.includes(remItemId))))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [date, remItemId, remDue]);
+  const reminder = !rem ? null : rem.dueDate === date ? rem : takenEarlier === false ? { ...rem, missed: true } : null;
 
   if (error) return <div className="page"><PageHeader title="Diet & meals" icon="apple" accent="lime" /><ErrorBox error={error} onRetry={loadPlan} /></div>;
 
@@ -212,7 +232,8 @@ export default function Diet() {
             </div>
 
             <aside className="diet-side">
-              <Checklist title="Supplements" icon="pill" items={plan.supplements} done={day.supplements} onToggle={(id) => toggleIn('supplements', id)} />
+              <Checklist title="Supplements" icon="pill" items={plan.supplements} done={day.supplements} onToggle={(id) => toggleIn('supplements', id)}
+                reminder={reminder} />
               <Checklist title="Preparations" icon="clock" items={plan.preparations} done={day.preparations} onToggle={(id) => toggleIn('preparations', id)} />
               <Week days={week} target={target} today={todayKey()} onPick={setDate} selected={date} />
             </aside>
@@ -244,16 +265,51 @@ function Meter({ label, unit, value, target, tone }) {
   );
 }
 
-function Checklist({ title, icon, items, done, onToggle }) {
-  if (!items.length) return null;
+/** Weekly supplement reminder (weekday: 0 = Sunday … 3 = Wednesday). `match` finds the item in your plan. */
+const WEEKLY_REMINDER = { weekday: 3, name: 'D3', match: /\bd3\b|vitamin\s*d/i };
+const WEEKDAY = (key) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).getDay(); };
+const dayName = (key, opts = { weekday: 'long' }) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, opts); };
+
+/** The most recent due day on or before this date, with the plan item it refers to. */
+function dueReminder(dateKey, supplements) {
+  const r = WEEKLY_REMINDER;
+  const back = (WEEKDAY(dateKey) - r.weekday + 7) % 7;
+  return { ...r, dueDate: shift(dateKey, -back), item: supplements.find((s) => r.match.test(s.name)) };
+}
+
+function Checklist({ title, icon, items, done, onToggle, reminder }) {
+  if (!items.length && !reminder) return null;
+  const reminderDone = reminder?.item && done.includes(reminder.item.id);
   return (
     <section className="card diet-check">
       <h2><Icon name={icon} size={16} /> {title}</h2>
+      {reminder && (
+        <div className={cx('diet-remind', reminderDone && 'done', reminder.missed && !reminderDone && 'late')} role="status">
+          <Icon name={reminderDone ? 'check' : reminder.missed ? 'alert' : 'clock'} size={16} />
+          <span>
+            <strong>
+              {reminderDone
+                ? `${reminder.item.name} taken${reminder.missed ? ' — caught up' : ''}`
+                : reminder.missed ? `${reminder.name} missed on ${dayName(reminder.dueDate)}` : `Take ${reminder.name} supplement`}
+            </strong>
+            <small>
+              {reminderDone
+                ? reminder.missed ? `Missed on ${dayName(reminder.dueDate)}, taken today.` : `Weekly dose done for this ${dayName(reminder.dueDate)}.`
+                : reminder.missed
+                  ? `Not ticked since ${dayName(reminder.dueDate, { weekday: 'short', day: 'numeric', month: 'short' })} — take it today.`
+                  : `Weekly reminder — every ${dayName(reminder.dueDate)}.`}
+            </small>
+          </span>
+          {reminder.item && !reminderDone && (
+            <button type="button" className="abtn abtn-sm" onClick={() => onToggle(reminder.item.id)}>Mark taken</button>
+          )}
+        </div>
+      )}
       <div className="diet-chips">
         {items.map((s) => {
           const on = done.includes(s.id);
           return (
-            <button key={s.id} type="button" className={cx('diet-chip', on && 'on')} aria-pressed={on} onClick={() => onToggle(s.id)}>
+            <button key={s.id} type="button" className={cx('diet-chip', on && 'on', reminder?.item?.id === s.id && !on && 'due')} aria-pressed={on} onClick={() => onToggle(s.id)}>
               <span className="tick" aria-hidden="true">{on && <Icon name="check" size={12} strokeWidth={3} />}</span>
               {s.name}
             </button>

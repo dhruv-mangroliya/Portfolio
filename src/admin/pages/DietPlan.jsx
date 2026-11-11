@@ -1,5 +1,6 @@
 // Customise the diet plan: sessions (with targets) and their food items, supplements, preparations.
 // Changes apply to future ticks; days already logged keep the values they were ticked with.
+import { DAILY_TARGET } from './Diet.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
@@ -93,7 +94,10 @@ export default function DietPlan() {
         <>
           <div className="card diet-plan-sum">
             <Icon name="target" size={18} />
-            <span>Daily target (sum of session targets): <b>{totals.p} g protein</b> · <b>{totals.c.toLocaleString()} kcal</b></span>
+            <span>
+              Daily target: <b>{DAILY_TARGET.protein} g protein</b> · <b>{DAILY_TARGET.calories.toLocaleString()} kcal</b> (fixed).
+              {' '}This plan adds up to {totals.p} g · {totals.c.toLocaleString()} kcal.
+            </span>
           </div>
 
           {plan.sessions.map((s, si) => (
