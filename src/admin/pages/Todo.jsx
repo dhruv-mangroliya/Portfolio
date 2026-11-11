@@ -60,6 +60,22 @@ export default function Todo() {
   const [error, setError] = useState(null);
   const [managing, setManaging] = useState(false);
   const [filter, setFilter] = useState(null); // categoryId | null
+  const [view, setViewState] = useState(() => {
+    try {
+      return localStorage.getItem('todo-view') || 'board';
+    } catch {
+      return 'board';
+    }
+  });
+  const setView = (v) => {
+    setViewState(v);
+    try {
+      localStorage.setItem('todo-view', v);
+    } catch {
+      /* ignore */
+    }
+  };
+  const [goalsKey, setGoalsKey] = useState(0);
   const rolled = useRef(false);
 
   const load = useCallback(async () => {
@@ -162,9 +178,18 @@ export default function Todo() {
         subtitle="Plan your week, drag tasks between days, and hit your targets."
         icon="check"
         accent="cyan"
-        actions={<button type="button" className="abtn" onClick={() => setManaging(true)}><Icon name="settings" size={16} /> Categories</button>}
+        actions={<button type="button" className="abtn" onClick={() => load().then(() => setManaging(true))}><Icon name="settings" size={16} /> Categories</button>}
       />
 
+      <div className="tabs" role="tablist" aria-label="To-do views">
+        <button type="button" role="tab" aria-selected={view === 'board'} className={cx('tab', view === 'board' && 'on')} onClick={() => { setView('board'); load(); }}>Weekly board</button>
+        <button type="button" role="tab" aria-selected={view === 'goals'} className={cx('tab', view === 'goals' && 'on')} onClick={() => setView('goals')}>Yearly goals</button>
+      </div>
+
+      {view === 'goals' ? (
+        <YearlyGoals refreshKey={goalsKey} onManage={() => load().then(() => setManaging(true))} />
+      ) : (
+      <>
       <div className="card todo-weekbar">
         <button type="button" className="icon-btn" onClick={() => setWeek((w) => addDays(w, -7))} aria-label="Previous week"><Icon name="chevron-left" size={20} /></button>
         <div className="todo-weektitle">
@@ -219,15 +244,256 @@ export default function Todo() {
           />
         </>
       )}
+      </>
+      )}
 
       {managing && data && (
         <CategoryManager
           categories={data.categories}
-          onClose={() => setManaging(false)}
+          onClose={() => {
+            setManaging(false);
+            setGoalsKey((k) => k + 1);
+          }}
           onChange={(categories) => setData((d) => ({ ...d, categories, tasks: d.tasks.map((t) => (t.categoryId && !categories.some((c) => c.id === t.categoryId) ? { ...t, categoryId: null } : t)) }))}
         />
       )}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ yearly goals */
+
+function YearlyGoals({ refreshKey, onManage }) {
+  const toast = useToast();
+  const thisYear = new Date().getFullYear();
+  const [year, setYear] = useState(thisYear);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [draft, setDraft] = useState({ name: '', color: COLORS[3], target: '' });
+
+  const load = useCallback(() => {
+    setError(null);
+    api.todoGoals(year, mondayOf()).then(setData).catch(setError);
+  }, [year]);
+  useEffect(() => {
+    setData(null);
+    load();
+  }, [load, refreshKey]);
+
+  async function saveWeekly(categoryId, weeklyTarget) {
+    try {
+      const { category } = await api.updateTodoCategory(categoryId, { weeklyTarget });
+      setData((d) => ({ ...d, categories: d.categories.map((c) => (c.id === categoryId ? category : c)) }));
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function saveTarget(categoryId, target) {
+    try {
+      const { goal } = await api.setTodoGoal(year, categoryId, target);
+      setData((d) => ({ ...d, goals: [...d.goals.filter((g) => g.categoryId !== categoryId), ...(goal ? [goal] : [])] }));
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function addCategory(e) {
+    e.preventDefault();
+    if (!draft.name.trim()) return;
+    try {
+      const { category } = await api.addTodoCategory({ name: draft.name.trim(), color: draft.color, weeklyTarget: 0 });
+      const target = Math.max(0, Math.round(Number(draft.target) || 0));
+      let goals = data.goals;
+      if (target > 0) {
+        const { goal } = await api.setTodoGoal(year, category.id, target);
+        goals = [...goals, goal];
+      }
+      setData((d) => ({ ...d, categories: [...d.categories, category], goals }));
+      setDraft({ name: '', color: COLORS[(data.categories.length * 7 + 3) % COLORS.length], target: '' });
+      toast(`Added ${category.name}`);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // How far through the year we are (for "on pace" hints) — only meaningful for the current year.
+  const now = new Date();
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+  const elapsed = year < thisYear ? 1 : year > thisYear ? 0 : (now - start) / (end - start);
+  const weeksLeft = year === thisYear ? Math.max(1, (end - now) / (7 * 86400000)) : year > thisYear ? 52 : 0;
+
+  const goalOf = (id) => data?.goals.find((g) => g.categoryId === id);
+  const rows = (data?.categories ?? []).map((c) => ({ c, target: goalOf(c.id)?.target ?? 0, since: goalOf(c.id)?.since, done: data.done[c.id] ?? 0 }));
+  const withGoal = rows.filter((r) => r.target > 0);
+  const totalTarget = withGoal.reduce((a, r) => a + r.target, 0);
+  const totalDone = withGoal.reduce((a, r) => a + Math.min(r.done, r.target), 0);
+
+  return (
+    <>
+      <div className="card todo-weekbar">
+        <button type="button" className="icon-btn" onClick={() => setYear((y) => y - 1)} aria-label="Previous year"><Icon name="chevron-left" size={20} /></button>
+        <div className="todo-weektitle">
+          <strong>{year === thisYear ? `This year · ${year}` : year}</strong>
+          <span>{year === thisYear ? `${Math.round(elapsed * 100)}% of the year gone` : year < thisYear ? 'Finished year' : 'Upcoming year'}</span>
+        </div>
+        <button type="button" className="icon-btn" onClick={() => setYear((y) => y + 1)} aria-label="Next year"><Icon name="chevron-right" size={20} /></button>
+        {year !== thisYear && <button type="button" className="abtn abtn-sm" onClick={() => setYear(thisYear)}>This year</button>}
+        {totalTarget > 0 && (
+          <span className="todo-weekdone"><b>{totalDone}</b> / {totalTarget} goal cards done</span>
+        )}
+      </div>
+
+      {error && <ErrorBox error={error} onRetry={load} />}
+      {!data && !error && <Spinner />}
+
+      {data && (
+        <>
+          <p className="goal-help">Every finished card counts +1 towards its category’s goal for the year it was finished. Unticking or deleting a finished card takes the point back.</p>
+          {rows.length > 0 && (
+            <div className="goal-grid">
+              {rows.map(({ c, target, since, done }) => {
+                // Pace runs from when the goal was set (or 1 Jan if set before the year began) to 31 Dec.
+                const from = Math.max(start.getTime(), since ? new Date(since).getTime() : start.getTime());
+                const goalElapsed = year < thisYear ? 1 : year > thisYear ? 0 : Math.min(1, Math.max(0, (now - from) / (end - from)));
+                return (
+                  <GoalCard
+                    key={c.id}
+                    c={c}
+                    target={target}
+                    done={done}
+                    weekDone={data.weekDone?.[c.id] ?? 0}
+                    elapsed={goalElapsed}
+                    since={since && new Date(since) > start ? new Date(since) : null}
+                    weeksLeft={weeksLeft}
+                    isPast={year < thisYear}
+                    onTarget={(t) => saveTarget(c.id, t)}
+                    onWeekly={(t) => saveWeekly(c.id, t)}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          <form className="card goal-add" onSubmit={addCategory}>
+            <h2><Icon name="plus" size={18} /> New category & goal</h2>
+            <div className="goal-add-row">
+              <ColorPick value={draft.color} onChange={(color) => setDraft((d) => ({ ...d, color }))} />
+              <input className="ainput" maxLength={40} placeholder="Category, e.g. Gym" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} aria-label="Category name" />
+              <label className="goal-target-in">
+                <input className="ainput" type="number" min="0" inputMode="numeric" placeholder="250" value={draft.target} onChange={(e) => setDraft((d) => ({ ...d, target: e.target.value }))} aria-label={`Goal for ${year} (cards)`} />
+                <span>cards in {year}</span>
+              </label>
+              <button className="abtn abtn-primary" disabled={!draft.name.trim()}><Icon name="plus" size={16} /> Add</button>
+            </div>
+            <button type="button" className="goal-manage" onClick={onManage}>Rename, recolour or delete categories…</button>
+          </form>
+        </>
+      )}
+    </>
+  );
+}
+
+function GoalCard({ c, target, done, weekDone, elapsed, since, weeksLeft, isPast, onTarget, onWeekly }) {
+  const [value, setValue] = useState(target ? String(target) : '');
+  useEffect(() => setValue(target ? String(target) : ''), [target]);
+  const weekly = c.weeklyTarget || 0;
+  const [weekValue, setWeekValue] = useState(weekly ? String(weekly) : '');
+  useEffect(() => setWeekValue(weekly ? String(weekly) : ''), [weekly]);
+  const weekPct = weekly > 0 ? Math.min(100, (weekDone / weekly) * 100) : 100; // 0 target = achieved
+  const commitWeekly = () => {
+    const n = Math.min(100, Math.max(0, Math.round(Number(weekValue) || 0)));
+    if (n !== weekly) onWeekly(n);
+  };
+  const cc = catColor(c.color);
+  // A goal of 0 (or none) is always met.
+  const pct = target > 0 ? Math.min(100, (done / target) * 100) : 100;
+  const expected = Math.round(target * elapsed);
+  const left = Math.max(0, target - done);
+  const commit = () => {
+    const n = Math.max(0, Math.round(Number(value) || 0));
+    if (n !== target) onTarget(n);
+  };
+
+  let pace = target > 0 ? null : { cls: 'good', text: 'Achieved · no target set' };
+  if (target > 0) {
+    if (done >= target) pace = { cls: 'good', text: 'Goal reached 🎉' };
+    else if (isPast) pace = { cls: 'bad', text: `Finished ${left} short` };
+    else if (elapsed > 0) {
+      const diff = done - expected;
+      pace = diff >= 0 ? { cls: 'good', text: `On track${diff > 0 ? ` · ${diff} ahead` : ''}` } : { cls: 'bad', text: `${-diff} behind schedule` };
+    }
+  }
+
+  return (
+    <section className={cx('card goal-card', cc.className)} style={cc.style}>
+      <header>
+        <span className="goal-dot" />
+        <h3>{c.name}</h3>
+        {done >= target && <Icon name="check" size={16} strokeWidth={3} className="goal-hit" />}
+      </header>
+      <div className="goal-num">
+        <strong>{done}</strong>
+        <span>{target > 0 ? `/ ${target}` : '/ 0'}</span>
+        <em>{Math.round(pct)}%</em>
+      </div>
+      <span className="goal-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label={`${c.name} yearly progress`}>
+        <i style={{ width: `${pct}%` }} />
+        {target > 0 && elapsed > 0 && elapsed < 1 && <b style={{ left: `${elapsed * 100}%` }} title={`Expected by today: ${expected} of ${target}${since ? ` (counting from ${since.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}, when the goal was set)` : ''}`} />}
+      </span>
+      <div className="goal-meta">
+        {pace && <span className={cx('goal-pace', pace.cls)}>{pace.text}</span>}
+        {target > 0 && left > 0 && !isPast && weeksLeft > 0 && <span>{left} to go · ~{Math.ceil(left / weeksLeft)}/week</span>}
+        {target > 0 && since && !isPast && <span className="goal-since">Pace from {since.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
+      </div>
+      <div className="goal-week">
+        <div className="goal-week-head">
+          <span className="k">This week</span>
+          <span className="n"><b>{weekDone}</b> / {weekly}</span>
+          <em>{Math.round(weekPct)}%</em>
+          {weekDone >= weekly && <Icon name="check" size={14} strokeWidth={3} className="goal-hit" />}
+        </div>
+        <span className="goal-bar small" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(weekPct)} aria-label={`${c.name} progress this week`}>
+          <i style={{ width: `${weekPct}%` }} />
+        </span>
+        {weekly > 0 && weekDone < weekly && <span className="goal-week-left">{weekly - weekDone} to go this week</span>}
+      </div>
+      <div className="goal-edit">
+        <label>
+          <span>Year</span>
+          <input
+            className="ainput"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            placeholder="0"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), e.currentTarget.blur())}
+            aria-label={`${c.name} yearly goal (cards)`}
+          />
+        </label>
+        <label>
+          <span>Week</span>
+          <input
+            className="ainput"
+            type="number"
+            min="0"
+            max="100"
+            inputMode="numeric"
+            placeholder="0"
+            value={weekValue}
+            onChange={(e) => setWeekValue(e.target.value)}
+            onBlur={commitWeekly}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), e.currentTarget.blur())}
+            aria-label={`${c.name} weekly goal (cards)`}
+          />
+        </label>
+        <span className="goal-edit-unit">cards</span>
+      </div>
+    </section>
   );
 }
 

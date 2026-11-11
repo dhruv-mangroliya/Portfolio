@@ -11,6 +11,7 @@ import { User } from '../src/models/index.js';
 import { hashPassword } from '../src/utils/password.js';
 import { DEFAULT_SEO } from '../src/modules/seo/seo.defaults.js';
 import { buildHeadTags, renderIndexHtml } from '../src/modules/seo/seo.service.js';
+import { MONEY_PASSCODE } from '../src/modules/money/money.routes.js';
 
 const TEST_URI = process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/dhruv_site_test';
 const PASSWORD = 'correct-horse-battery';
@@ -20,7 +21,7 @@ const app = createApp();
 function withPasscode(agent) {
   for (const m of ['get', 'post', 'patch', 'put', 'delete']) {
     const orig = agent[m].bind(agent);
-    agent[m] = (...args) => orig(...args).set('X-Money-Passcode', '18');
+    agent[m] = (...args) => orig(...args).set('X-Money-Passcode', MONEY_PASSCODE);
   }
   return agent;
 }
@@ -507,8 +508,8 @@ describe('money tracker', () => {
     const agent = await signedIn();
     let res = await agent.get('/api/v1/admin/money').expect(403);
     assert.equal(res.body.error.code, 'PASSCODE_REQUIRED');
-    await agent.get('/api/v1/admin/money').set('X-Money-Passcode', '17').expect(403);
-    await agent.get('/api/v1/admin/money').set('X-Money-Passcode', '18').expect(200);
+    await agent.get('/api/v1/admin/money').set('X-Money-Passcode', `${MONEY_PASSCODE}0`).expect(403);
+    await agent.get('/api/v1/admin/money').set('X-Money-Passcode', MONEY_PASSCODE).expect(200);
   });
 
   test('income, places and entries', async () => {
@@ -544,3 +545,41 @@ describe('money tracker', () => {
     await agent.post('/api/v1/admin/money/transfers').send({ accountId: '0123456789abcdef01234567', amount: 5, date: '2026-01-01' }).expect(400);
   });
 });
+
+describe('to-do yearly goals', () => {
+  test('progress = finished cards in the year; untick / delete take it back', async () => {
+    const agent = await signedIn();
+    const T = '/api/v1/admin/todo';
+    const { body: { category: gym } } = await agent.post(`${T}/categories`).send({ name: 'Gym goals', color: '#22c55e' }).expect(201);
+    const year = new Date().getFullYear();
+    await agent.put(`${T}/goals/${year}/${gym.id}`).send({ target: 250 }).expect(200);
+
+    const monday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); })();
+    const mk = async (title) => (await agent.post(`${T}/tasks`).send({ title, categoryId: gym.id, weekStart: monday, day: 0 }).expect(201)).body.task;
+    const t1 = await mk('Leg day');
+    const t2 = await mk('Push day');
+    const t3 = await mk('Pull day');
+    await agent.patch(`${T}/tasks/${t1.id}`).send({ done: true }).expect(200);
+    await agent.patch(`${T}/tasks/${t2.id}`).send({ done: true }).expect(200);
+
+    const done = async () => (await agent.get(`${T}/goals/${year}?tz=0`).expect(200)).body;
+    let g = await done();
+    assert.equal(g.done[gym.id], 2);
+    assert.equal((await agent.get(`${T}/goals/${year}?tz=0&week=${monday}`).expect(200)).body.weekDone[gym.id], 2);
+    const goal = g.goals.find((x) => x.categoryId === gym.id);
+    assert.equal(goal.target, 250);
+    assert.ok(goal.since, 'goal reports when it was set');
+
+    await agent.delete(`${T}/tasks/${t3.id}`).expect(204); // not finished → no change
+    assert.equal((await done()).done[gym.id], 2);
+    await agent.delete(`${T}/tasks/${t1.id}`).expect(204); // finished → −1
+    assert.equal((await done()).done[gym.id], 1);
+    await agent.patch(`${T}/tasks/${t2.id}`).send({ done: false }).expect(200); // unticked → −1
+    assert.equal((await done()).done[gym.id] ?? 0, 0);
+
+    await agent.put(`${T}/goals/${year}/${gym.id}`).send({ target: -5 }).expect(400);
+    await agent.put(`${T}/goals/${year}/${gym.id}`).send({ target: 0 }).expect(200); // 0 removes the goal
+    assert.equal((await done()).goals.length, 0);
+  });
+});
+

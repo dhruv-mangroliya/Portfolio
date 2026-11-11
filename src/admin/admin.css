@@ -1036,3 +1036,48 @@ textarea.ainput { resize: vertical; line-height: 1.5; }
 .cchart-hover { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
 .ichart-tip .row.key > span { display: inline-flex; align-items: center; gap: 6px; }
 .ichart-tip .row.key i { width: 12px; height: 3px; border-radius: 2px; }
+
+/* to-do yearly goals */
+.goal-help { margin: -6px 0 0; font-size: 0.86rem; color: var(--ink-3); }
+.goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.goal-card { --a: var(--ink-3); display: grid; gap: 10px; padding: 18px; border-top: 4px solid var(--a); min-width: 0; }
+.goal-card header { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.goal-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--a); flex: none; }
+.goal-card h3 { font-size: 1.05rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goal-hit { margin-left: auto; color: var(--a-ink); }
+.goal-num { display: flex; align-items: baseline; gap: 6px; }
+.goal-num strong { font-size: 2.2rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
+.goal-num span { font-size: 1rem; font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.goal-num em { margin-left: auto; font-style: normal; font-weight: 800; color: var(--a-ink); font-variant-numeric: tabular-nums; }
+.goal-bar { position: relative; display: block; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--a) 14%, var(--bg-2)); overflow: visible; }
+.goal-bar i { display: block; height: 100%; border-radius: 999px; background: var(--a); transition: width 0.4s ease; }
+.goal-bar b { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--ink-2); }
+.goal-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.8rem; color: var(--ink-3); font-weight: 600; min-height: 1.2em; }
+.goal-pace.good { color: color-mix(in srgb, #16a34a 80%, var(--ink)); }
+.goal-pace.bad { color: color-mix(in srgb, #dc2626 80%, var(--ink)); }
+.goal-edit { display: flex; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 0.82rem; font-weight: 700; color: var(--ink-3); }
+.goal-edit .ainput { width: 110px; padding: 7px 10px; }
+.goal-add { display: grid; gap: 12px; padding: 18px; }
+.goal-add h2 { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 800; }
+.goal-add-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; }
+.goal-add-row .ainput { padding: 9px 11px; }
+.goal-target-in { display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+.goal-target-in .ainput { width: 100px; }
+.goal-manage { justify-self: start; border: 0; background: none; padding: 0; font: inherit; font-size: 0.84rem; font-weight: 700; color: var(--primary-ink); text-decoration: underline; cursor: pointer; }
+@media (max-width: 640px) { .goal-add-row { grid-template-columns: auto minmax(0, 1fr); } .goal-target-in, .goal-add-row .abtn { grid-column: 1 / -1; } }
+.goal-since { flex-basis: 100%; font-weight: 500; }
+
+/* weekly target inside the yearly goal card */
+.goal-week { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--a) 7%, var(--surface-2)); }
+.goal-week-head { display: flex; align-items: baseline; gap: 8px; }
+.goal-week-head .k { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+.goal-week-head .n { font-size: 0.9rem; font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.goal-week-head .n b { font-size: 1.15rem; color: var(--ink); }
+.goal-week-head em { margin-left: auto; font-style: normal; font-weight: 800; font-size: 0.85rem; color: var(--a-ink); font-variant-numeric: tabular-nums; }
+.goal-week-head .goal-hit { margin-left: 0; }
+.goal-bar.small { height: 6px; }
+.goal-week-left { font-size: 0.78rem; color: var(--ink-3); font-weight: 600; }
+.goal-edit { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.goal-edit label { display: inline-flex; align-items: center; gap: 6px; }
+.goal-edit .ainput { width: 84px; }
+.goal-edit-unit { font-size: 0.82rem; font-weight: 700; color: var(--ink-3); }

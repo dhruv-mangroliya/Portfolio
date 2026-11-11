@@ -75,6 +75,8 @@ export const api = {
   addTodoCategory: (data) => request('POST', '/admin/todo/categories', data),
   updateTodoCategory: (id, data) => request('PATCH', `/admin/todo/categories/${id}`, data),
   deleteTodoCategory: (id) => request('DELETE', `/admin/todo/categories/${id}`),
+  todoGoals: (year, week) => request('GET', `/admin/todo/goals/${year}?tz=${new Date().getTimezoneOffset()}${week ? `&week=${week}` : ''}`),
+  setTodoGoal: (year, categoryId, target) => request('PUT', `/admin/todo/goals/${year}/${categoryId}`, { target }),
 
   // Money tracker — kind: 'incomes' | 'targets' | 'accounts'
   money: () => request('GET', '/admin/money'),

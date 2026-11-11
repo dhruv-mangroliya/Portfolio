@@ -39,5 +39,17 @@ const taskSchema = new Schema(
 );
 taskSchema.index({ done: 1, weekStart: 1 });
 
+// Yearly goal per category, e.g. Gym · 2026 · 250 finished cards.
+const goalSchema = new Schema(
+  {
+    year: { type: Number, required: true, min: 2000, max: 2100 },
+    categoryId: { type: Schema.Types.ObjectId, ref: 'TodoCategory', required: true },
+    target: { type: Number, required: true, min: 0, max: 100000 },
+  },
+  { timestamps: true, toJSON }
+);
+goalSchema.index({ year: 1, categoryId: 1 }, { unique: true });
+
 export const TodoCategory = model('TodoCategory', categorySchema);
+export const TodoGoal = model('TodoGoal', goalSchema);
 export const TodoTask = model('TodoTask', taskSchema);

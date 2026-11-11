@@ -47,7 +47,7 @@ function crud(router, path, Model, body) {
 export const moneyRoutes = Router();
 
 // Extra lock on top of being signed in: every money request must carry the passcode.
-const MONEY_PASSCODE = '1808';
+export const MONEY_PASSCODE = '1808';
 moneyRoutes.use((req, _res, next) => {
   const given = String(req.get('x-money-passcode') ?? '');
   const ok = given.length === MONEY_PASSCODE.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(MONEY_PASSCODE));

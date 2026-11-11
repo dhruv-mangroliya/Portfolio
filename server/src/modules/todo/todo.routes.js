@@ -5,10 +5,12 @@
 //   PATCH  /admin/todo/tasks/:id           edit / move / tick a card
 //   DELETE /admin/todo/tasks/:id
 //   POST   /admin/todo/categories          create;  PATCH/DELETE /admin/todo/categories/:id
+//   GET    /admin/todo/goals/:year?tz=&week=   { categories, goals, done, weekDone } — finished cards per category that year / that week
+//   PUT    /admin/todo/goals/:year/:categoryId   { target }
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../../middleware/validate.js';
-import { TodoCategory, TodoTask } from '../../models/index.js';
+import { TodoCategory, TodoGoal, TodoTask } from '../../models/index.js';
 import { NotFound } from '../../utils/errors.js';
 import { ACCENTS, zObjectId, zRequired } from '../../utils/validators.js';
 
@@ -105,5 +107,58 @@ export const todoRoutes = Router()
     const r = await TodoCategory.deleteOne({ _id: req.valid.params.id });
     if (!r.deletedCount) throw NotFound('Category not found.');
     await TodoTask.updateMany({ categoryId: req.valid.params.id }, { $set: { categoryId: null } }); // cards stay, uncategorised
+    await TodoGoal.deleteMany({ categoryId: req.valid.params.id });
     res.status(204).end();
   });
+
+/* ------------------------------------------------------------------ yearly goals */
+
+const zYear = z.coerce.number().int().min(2000).max(2100);
+
+todoRoutes.get(
+  '/goals/:year',
+  validate({ params: z.object({ year: zYear }), query: z.object({ tz: z.coerce.number().int().min(-840).max(840).default(0), week: zMonday.optional() }) }),
+  async (req, res) => {
+    const { year } = req.valid.params;
+    const tzMs = req.valid.query.tz * 60_000; // the browser's getTimezoneOffset(), so "2026" means the user's local year
+    const from = new Date(Date.UTC(year, 0, 1) + tzMs);
+    const to = new Date(Date.UTC(year + 1, 0, 1) + tzMs);
+    const { week } = req.valid.query;
+    const [categories, goals, counts, weekCounts] = await Promise.all([
+      TodoCategory.find().sort({ order: 1, createdAt: 1 }),
+      TodoGoal.find({ year }),
+      // Progress is counted from finished cards, so ticking / unticking / deleting a card is always reflected.
+      TodoTask.aggregate([
+        { $match: { done: true, categoryId: { $ne: null }, doneAt: { $gte: from, $lt: to } } },
+        { $group: { _id: '$categoryId', n: { $sum: 1 } } },
+      ]),
+      // This week's finished cards per category (same count as the weekly board).
+      week
+        ? TodoTask.aggregate([{ $match: { done: true, categoryId: { $ne: null }, weekStart: week } }, { $group: { _id: '$categoryId', n: { $sum: 1 } } }])
+        : [],
+    ]);
+    res.json({
+      year,
+      categories,
+      goals: goals.map((g) => ({ categoryId: String(g.categoryId), target: g.target, since: g.createdAt })),
+      done: Object.fromEntries(counts.map((c) => [String(c._id), c.n])),
+      weekDone: Object.fromEntries(weekCounts.map((c) => [String(c._id), c.n])),
+    });
+  }
+);
+
+todoRoutes.put(
+  '/goals/:year/:categoryId',
+  validate({ params: z.object({ year: zYear, categoryId: zObjectId }), body: z.object({ target: z.coerce.number().int('Whole number of cards.').min(0).max(100000) }) }),
+  async (req, res) => {
+    const { year, categoryId } = req.valid.params;
+    if (!(await TodoCategory.exists({ _id: categoryId }))) throw NotFound('Category not found.');
+    const { target } = req.valid.body;
+    if (target === 0) {
+      await TodoGoal.deleteOne({ year, categoryId });
+      return res.json({ goal: null });
+    }
+    const goal = await TodoGoal.findOneAndUpdate({ year, categoryId }, { $set: { target } }, { new: true, upsert: true, runValidators: true });
+    res.json({ goal: { categoryId, target: goal.target, since: goal.createdAt } });
+  }
+);
