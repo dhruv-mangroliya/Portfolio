@@ -12,6 +12,7 @@ import { mediaAdminRoutes } from '../modules/media/media.admin.routes.js';
 import { dietRoutes } from '../modules/diet/diet.routes.js';
 import { todoRoutes } from '../modules/todo/todo.routes.js';
 import { moneyRoutes } from '../modules/money/money.routes.js';
+import { sdeRoutes } from '../modules/sde/sde.routes.js';
 import { weightRoutes } from '../modules/weight/weight.routes.js';
 import { mediaRoutes } from '../modules/media/media.routes.js';
 import { messageRoutes } from '../modules/messages/messages.routes.js';
@@ -49,6 +50,7 @@ export function apiV1() {
   admin.use('/diet', dietRoutes);
   admin.use('/todo', todoRoutes);
   admin.use('/money', moneyRoutes);
+  admin.use('/sde', sdeRoutes);
   admin.use('/collections/:collection', collectionRoutes);
   api.use('/admin', admin);
 

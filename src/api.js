@@ -78,6 +78,14 @@ export const api = {
   todoGoals: (year, week) => request('GET', `/admin/todo/goals/${year}?tz=${new Date().getTimezoneOffset()}${week ? `&week=${week}` : ''}`),
   setTodoGoal: (year, categoryId, target) => request('PUT', `/admin/todo/goals/${year}/${categoryId}`, { target }),
 
+  // SDE-2 prep (YouTube courses)
+  sde: () => request('GET', '/admin/sde'),
+  addSde: (data) => request('POST', '/admin/sde', data),
+  updateSde: (id, data) => request('PATCH', `/admin/sde/${id}`, data),
+  refreshSde: (id) => request('POST', `/admin/sde/${id}/refresh`),
+  markSde: (id, lessons, done) => request('PUT', `/admin/sde/${id}/done`, { lessons, done }),
+  deleteSde: (id) => request('DELETE', `/admin/sde/${id}`),
+
   // Money tracker — kind: 'incomes' | 'targets' | 'accounts'
   money: () => request('GET', '/admin/money'),
   moneyAdd: (kind, data) => request('POST', `/admin/money/${kind}`, data),

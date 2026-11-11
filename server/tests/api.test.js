@@ -583,3 +583,68 @@ describe('to-do yearly goals', () => {
   });
 });
 
+
+describe('SDE-2 courses', () => {
+  const S = '/api/v1/admin/sde';
+  const realFetch = globalThis.fetch;
+  /** Fake YouTube: a 3-video playlist split over two pages, a channel, and a resolver. */
+  const lockup = (id, title) => ({ lockupViewModel: { contentType: 'LOCKUP_CONTENT_TYPE_VIDEO', contentId: id, metadata: { lockupMetadataViewModel: { title: { content: title } } }, contentImage: { thumbnailViewModel: { overlays: [{ thumbnailBadgeViewModel: { text: '10:00' } }] } } } });
+  const more = (token) => ({ continuationItemViewModel: { continuationCommand: { innertubeCommand: { continuationCommand: { token } } } } });
+  let youtubeDown = false;
+  before(() => {
+    globalThis.fetch = async (url, init) => {
+      if (!String(url).startsWith('https://www.youtube.com/')) return realFetch(url, init);
+      if (youtubeDown) return new Response('', { status: 429 });
+      const body = JSON.parse(init.body);
+      const json = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      if (String(url).includes('resolve_url')) return json({ endpoint: { browseEndpoint: { browseId: 'UCaaaaaaaaaaaaaaaaaaaaaa' } } });
+      if (body.browseId === 'VLPLtest1234567890') return json({ header: { playlistHeaderRenderer: { title: { simpleText: 'DSA Course' }, ownerText: { runs: [{ text: 'Teacher' }] } } }, contents: { list: [lockup('v1', 'Intro'), lockup('v2', 'Arrays'), more('p2')] } });
+      if (body.continuation === 'p2') return json({ onResponseReceivedActions: [{ items: [lockup('v3', 'Linked lists')] }] });
+      if (body.browseId === 'VLUUaaaaaaaaaaaaaaaaaaaaaa') return json({ header: { playlistHeaderRenderer: { title: { simpleText: 'Uploads from Tech Channel' } } }, contents: { list: [lockup('new', 'Newest'), lockup('old', 'Oldest')] } });
+      return json({});
+    };
+  });
+  after(() => { globalThis.fetch = realFetch; });
+
+  test('adds a playlist, ticks lessons, changes X', async () => {
+    const agent = await signedIn();
+    await agent.post(S).send({ url: 'https://example.com/whatever' }).expect(400);
+
+    const { track } = (await agent.post(S).send({ url: 'https://www.youtube.com/playlist?list=PLtest1234567890' }).expect(201)).body;
+    assert.equal(track.title, 'DSA Course');
+    assert.equal(track.total, 3, 'X defaults to every video, across pages');
+    assert.deepEqual(track.videos.map((v) => v.videoId), ['v1', 'v2', 'v3']);
+    assert.equal(track.videos[0].duration, '10:00');
+
+    let r = (await agent.put(`${S}/${track.id}/done`).send({ lessons: [1, 2, 3, 9], done: true }).expect(200)).body.track;
+    assert.deepEqual([...r.done].sort(), [1, 2, 3], 'lessons past X are ignored');
+    r = (await agent.put(`${S}/${track.id}/done`).send({ lessons: [2], done: false }).expect(200)).body.track;
+    assert.deepEqual([...r.done].sort(), [1, 3]);
+
+    r = (await agent.patch(`${S}/${track.id}`).send({ total: 2, skip: 1 }).expect(200)).body.track;
+    assert.deepEqual(r.done, [1], 'shrinking X drops ticks beyond it');
+    await agent.patch(`${S}/${track.id}`).send({ total: 0 }).expect(400);
+
+    assert.equal((await agent.get(S).expect(200)).body.tracks.length, 1);
+    await agent.delete(`${S}/${track.id}`).expect(204);
+    await agent.delete(`${S}/${track.id}`).expect(404);
+  });
+
+  test('channel lists oldest first; YouTube down needs X', async () => {
+    const agent = await signedIn();
+    const { track } = (await agent.post(S).send({ url: 'youtube.com/@techchannel', total: 50 }).expect(201)).body;
+    assert.equal(track.kind, 'channel');
+    assert.equal(track.title, 'Tech Channel');
+    assert.deepEqual(track.videos.map((v) => v.videoId), ['old', 'new']);
+    assert.equal(track.total, 50, 'X can be more than the videos so far');
+
+    youtubeDown = true;
+    await agent.post(S).send({ url: 'https://www.youtube.com/playlist?list=PLtest1234567890' }).expect(502);
+    const r = (await agent.post(S).send({ url: 'https://www.youtube.com/playlist?list=PLtest1234567890', total: 20, title: 'Offline' }).expect(201)).body;
+    assert.ok(r.warning);
+    assert.equal(r.track.total, 20);
+    await agent.post(`${S}/${r.track.id}/refresh`).expect(502);
+    youtubeDown = false;
+    assert.equal((await agent.post(`${S}/${r.track.id}/refresh`).expect(200)).body.track.videos.length, 3);
+  });
+});

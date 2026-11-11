@@ -681,6 +681,7 @@ function WealthTab({ data, setData, mutate, year }) {
   const [newAcc, setNewAcc] = useState({ name: '', color: ACCOUNT_COLORS[accounts.length % ACCOUNT_COLORS.length] });
   const [filter, setFilter] = useState(null); // accountId | null
   const [showAll, setShowAll] = useState(false);
+  const [placesOpen, setPlacesOpen] = useState(accounts.length === 0);
 
   const totals = accounts.map((a) => ({ ...a, total: sum(transfers.filter((t) => t.accountId === a.id)) }));
   const grand = sum(totals, (a) => a.total);
@@ -792,8 +793,13 @@ function WealthTab({ data, setData, mutate, year }) {
           )}
         </section>
 
-        <section className="card money-card">
-          <header className="card-head"><h2><Icon name="settings" size={18} /> Places</h2></header>
+        <section className={cx('card money-card places-card', placesOpen && 'open')}>
+          <button type="button" className="places-toggle" onClick={() => setPlacesOpen((o) => !o)} aria-expanded={placesOpen} aria-controls="places-body">
+            <h2><Icon name="settings" size={18} /> Manage places <small>{accounts.length}</small></h2>
+            <Icon name="chevron-down" size={18} className="places-chev" />
+          </button>
+          {placesOpen && (
+          <div id="places-body">
           <p className="money-help">Where you keep money — bank, mutual funds, stocks, FD, PPF…</p>
           <ul className="acc-list">
             {accounts.map((a) => (
@@ -805,6 +811,8 @@ function WealthTab({ data, setData, mutate, year }) {
             <input className="ainput" maxLength={40} placeholder="Add a place, e.g. Stocks" value={newAcc.name} onChange={(e) => setNewAcc((x) => ({ ...x, name: e.target.value }))} aria-label="New place name" />
             <button className="abtn" disabled={!newAcc.name.trim()}><Icon name="plus" size={15} /> Add</button>
           </form>
+          </div>
+          )}
         </section>
       </div>
     </>
