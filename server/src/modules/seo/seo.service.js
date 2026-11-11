@@ -62,7 +62,8 @@ export function buildHeadTags(profile, content) {
       },
     }),
   };
-  const website = { '@type': 'WebSite', '@id': id('website'), name, ...(site && { url: site }), description, publisher: { '@id': id('person') }, inLanguage: 'en' };
+  // Google uses WebSite.name (+ alternateName) as the site name shown above search results.
+  const website = { '@type': 'WebSite', '@id': id('website'), name, alternateName: [`${name} — Portfolio`, site && new URL(site).hostname].filter(Boolean), ...(site && { url: site }), description, publisher: { '@id': id('person') }, inLanguage: 'en' };
   const projects = (content?.projects ?? []).map((p) => ({
     '@type': 'CreativeWork',
     name: p.title,
@@ -88,6 +89,7 @@ export function buildHeadTags(profile, content) {
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(description)}" />`,
     `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="${esc(name)}" />`,
     `<meta property="og:title" content="${esc(title)}" />`,
     `<meta property="og:description" content="${esc(description)}" />`,
     `<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}" />`,
