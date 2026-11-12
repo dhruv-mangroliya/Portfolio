@@ -66,7 +66,8 @@ export function createApp() {
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-          imgSrc: ["'self'", 'data:', 'https:'],
+          // blob: is needed for the admin photo uploader's local preview (URL.createObjectURL)
+          imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
           connectSrc: ["'self'"],
           frameAncestors: ["'none'"],
         },
