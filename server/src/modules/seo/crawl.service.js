@@ -184,7 +184,7 @@ const BOTS = ['*', 'Googlebot', 'Bingbot', 'GPTBot', 'ChatGPT-User', 'OAI-Search
 export function renderRobots(site) {
   // contentsignals.org — how the content may be used: search results, AI answers and AI training are all fine.
   const signal = 'Content-Signal: search=yes, ai-input=yes, ai-train=yes';
-  const rules = BOTS.map((b) => `User-agent: ${b}\n${signal}\nAllow: /\nAllow: /api/v1/content\nAllow: /api/v1/media/\nDisallow: /admin\nDisallow: /api/\n`).join('\n');
+  const rules = BOTS.map((b) => `User-agent: ${b}\n${signal}\nAllow: /\n`).join('\n');
   return `# Search engines and AI assistants are welcome. Content signals: https://contentsignals.org\n\n${rules}\nSitemap: ${site}sitemap.xml\n`;
 }
 

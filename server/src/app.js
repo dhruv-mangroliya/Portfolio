@@ -26,6 +26,13 @@ export function createApp() {
   app.disable('x-powered-by');
   if (config.http.trustProxy) app.set('trust proxy', config.http.trustProxy);
 
+  // Dashboard and API answers must never show up in search. They stay crawlable (not blocked in robots.txt)
+  // so search engines can actually see this header and drop them; uploaded images remain indexable.
+  app.use((req, res, next) => {
+    if (/^\/(admin|api)(\/|$)/.test(req.path) && !req.path.startsWith('/api/v1/media/')) res.set('X-Robots-Tag', 'noindex, nofollow');
+    next();
+  });
+
   // One address for search engines: www.example.com/… → example.com/… (permanent).
   app.use((req, res, next) => {
     const host = req.headers.host || '';
