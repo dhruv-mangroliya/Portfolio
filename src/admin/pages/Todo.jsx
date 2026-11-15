@@ -165,7 +165,8 @@ export default function Todo() {
     return {
       total: data.tasks.length,
       done: data.tasks.filter((t) => t.done).length,
-      cats: data.categories.map((c) => ({ ...c, done: by(c.id).filter((t) => t.done).length, planned: by(c.id).length })),
+      // Weekly goal of a category = how many cards it has on this week's board; categories with none are hidden.
+      cats: data.categories.map((c) => ({ ...c, done: by(c.id).filter((t) => t.done).length, planned: by(c.id).length })).filter((c) => c.planned > 0),
     };
   }, [data]);
 
@@ -216,10 +217,10 @@ export default function Todo() {
                 <CategoryProgress key={c.id} c={c} active={filter === c.id} onClick={() => setFilter((f) => (f === c.id ? null : c.id))} />
               ))}
             </div>
-          ) : (
+          ) : data.categories.length > 0 ? null : (
             <div className="card todo-hint">
               <Icon name="sparkles" size={18} />
-              <span>Create categories like <b>Gym</b> or <b>Design</b> with a weekly target to track your progress.</span>
+              <span>Create categories like <b>Gym</b> or <b>Design</b> and give cards a category to track your progress.</span>
               <button type="button" className="abtn abtn-sm abtn-primary" onClick={() => setManaging(true)}><Icon name="plus" size={15} /> Add categories</button>
             </div>
           )}
@@ -273,21 +274,12 @@ function YearlyGoals({ refreshKey, onManage }) {
 
   const load = useCallback(() => {
     setError(null);
-    api.todoGoals(year, mondayOf()).then(setData).catch(setError);
+    api.todoGoals(year).then(setData).catch(setError);
   }, [year]);
   useEffect(() => {
     setData(null);
     load();
   }, [load, refreshKey]);
-
-  async function saveWeekly(categoryId, weeklyTarget) {
-    try {
-      const { category } = await api.updateTodoCategory(categoryId, { weeklyTarget });
-      setData((d) => ({ ...d, categories: d.categories.map((c) => (c.id === categoryId ? category : c)) }));
-    } catch (err) {
-      toast(err.message, 'error');
-    }
-  }
 
   async function saveTarget(categoryId, target) {
     try {
@@ -363,13 +355,11 @@ function YearlyGoals({ refreshKey, onManage }) {
                     c={c}
                     target={target}
                     done={done}
-                    weekDone={data.weekDone?.[c.id] ?? 0}
                     elapsed={goalElapsed}
                     since={since && new Date(since) > start ? new Date(since) : null}
                     weeksLeft={weeksLeft}
                     isPast={year < thisYear}
                     onTarget={(t) => saveTarget(c.id, t)}
-                    onWeekly={(t) => saveWeekly(c.id, t)}
                   />
                 );
               })}
@@ -395,17 +385,9 @@ function YearlyGoals({ refreshKey, onManage }) {
   );
 }
 
-function GoalCard({ c, target, done, weekDone, elapsed, since, weeksLeft, isPast, onTarget, onWeekly }) {
+function GoalCard({ c, target, done, elapsed, since, weeksLeft, isPast, onTarget }) {
   const [value, setValue] = useState(target ? String(target) : '');
   useEffect(() => setValue(target ? String(target) : ''), [target]);
-  const weekly = c.weeklyTarget || 0;
-  const [weekValue, setWeekValue] = useState(weekly ? String(weekly) : '');
-  useEffect(() => setWeekValue(weekly ? String(weekly) : ''), [weekly]);
-  const weekPct = weekly > 0 ? Math.min(100, (weekDone / weekly) * 100) : 100; // 0 target = achieved
-  const commitWeekly = () => {
-    const n = Math.min(100, Math.max(0, Math.round(Number(weekValue) || 0)));
-    if (n !== weekly) onWeekly(n);
-  };
   const cc = catColor(c.color);
   // A goal of 0 (or none) is always met.
   const pct = target > 0 ? Math.min(100, (done / target) * 100) : 100;
@@ -447,18 +429,6 @@ function GoalCard({ c, target, done, weekDone, elapsed, since, weeksLeft, isPast
         {target > 0 && left > 0 && !isPast && weeksLeft > 0 && <span>{left} to go · ~{Math.ceil(left / weeksLeft)}/week</span>}
         {target > 0 && since && !isPast && <span className="goal-since">Pace from {since.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
       </div>
-      <div className="goal-week">
-        <div className="goal-week-head">
-          <span className="k">This week</span>
-          <span className="n"><b>{weekDone}</b> / {weekly}</span>
-          <em>{Math.round(weekPct)}%</em>
-          {weekDone >= weekly && <Icon name="check" size={14} strokeWidth={3} className="goal-hit" />}
-        </div>
-        <span className="goal-bar small" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(weekPct)} aria-label={`${c.name} progress this week`}>
-          <i style={{ width: `${weekPct}%` }} />
-        </span>
-        {weekly > 0 && weekDone < weekly && <span className="goal-week-left">{weekly - weekDone} to go this week</span>}
-      </div>
       <div className="goal-edit">
         <label>
           <span>Year</span>
@@ -475,22 +445,6 @@ function GoalCard({ c, target, done, weekDone, elapsed, since, weeksLeft, isPast
             aria-label={`${c.name} yearly goal (cards)`}
           />
         </label>
-        <label>
-          <span>Week</span>
-          <input
-            className="ainput"
-            type="number"
-            min="0"
-            max="100"
-            inputMode="numeric"
-            placeholder="0"
-            value={weekValue}
-            onChange={(e) => setWeekValue(e.target.value)}
-            onBlur={commitWeekly}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), e.currentTarget.blur())}
-            aria-label={`${c.name} weekly goal (cards)`}
-          />
-        </label>
         <span className="goal-edit-unit">cards</span>
       </div>
     </section>
@@ -498,9 +452,9 @@ function GoalCard({ c, target, done, weekDone, elapsed, since, weeksLeft, isPast
 }
 
 function CategoryProgress({ c, active, onClick }) {
-  const target = c.weeklyTarget;
-  const pct = target > 0 ? Math.min(100, (c.done / target) * 100) : 0;
-  const hit = target > 0 && c.done >= target;
+  const target = c.planned; // this week's goal = cards planned in the category
+  const pct = Math.min(100, (c.done / target) * 100);
+  const hit = c.done >= target;
   return (
     <button type="button" className={cx('card todo-cat', catColor(c.color).className, active && 'on')} style={catColor(c.color).style} onClick={onClick} aria-pressed={active} title="Click to show only this category">
       <span className="todo-cat-head">
@@ -510,16 +464,12 @@ function CategoryProgress({ c, active, onClick }) {
       </span>
       <strong>
         {c.done}
-        <small>{target > 0 ? ` / ${target}` : ''} done</small>
+        <small> / {target} done</small>
       </strong>
-      {target > 0 ? (
-        <span className="todo-cat-bar" role="progressbar" aria-valuemin={0} aria-valuemax={target} aria-valuenow={c.done} aria-label={`${c.name} progress`}>
-          <i style={{ width: `${pct}%` }} />
-        </span>
-      ) : (
-        <span className="todo-cat-bar empty" />
-      )}
-      <span className="todo-cat-sub">{target > 0 ? (hit ? 'Target reached' : `${Math.round(pct)}% · ${target - c.done} to go`) : 'No target'} · {c.planned} planned</span>
+      <span className="todo-cat-bar" role="progressbar" aria-valuemin={0} aria-valuemax={target} aria-valuenow={c.done} aria-label={`${c.name} progress`}>
+        <i style={{ width: `${pct}%` }} />
+      </span>
+      <span className="todo-cat-sub">{hit ? 'All done this week' : `${Math.round(pct)}% · ${target - c.done} to go`}</span>
     </button>
   );
 }
@@ -828,7 +778,7 @@ function CategoryManager({ categories, onClose, onChange }) {
     e.preventDefault();
     if (!draft.name.trim()) return;
     try {
-      const { category } = await api.addTodoCategory({ name: draft.name.trim(), color: draft.color, weeklyTarget: Number(draft.weeklyTarget) || 0 });
+      const { category } = await api.addTodoCategory({ name: draft.name.trim(), color: draft.color, weeklyTarget: 0 });
       const next = [...list, category];
       commit(next);
       setDraft({ name: '', color: COLORS[(next.length * 7) % COLORS.length], weeklyTarget: '' });
@@ -863,10 +813,10 @@ function CategoryManager({ categories, onClose, onChange }) {
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal todo-cat-modal" role="dialog" aria-modal="true" aria-labelledby="cat-title">
         <h2 id="cat-title">Categories</h2>
-        <p>Each finished card counts as 1 towards its category’s weekly target.</p>
+        <p>Give cards a category to see its weekly progress on the board — the goal is however many cards it has that week.</p>
         <div className="todo-cat-list">
           {list.length > 0 && (
-            <div className="todo-cat-row head" aria-hidden="true"><span>Name</span><span>Colour</span><span>Weekly target</span><span /></div>
+            <div className="todo-cat-row head" aria-hidden="true"><span>Name</span><span>Colour</span><span /></div>
           )}
           {list.map((c) => (
             <CategoryRow key={c.id} c={c} onSave={(patch) => update(c, patch)} onDelete={() => remove(c)} />
@@ -875,7 +825,6 @@ function CategoryManager({ categories, onClose, onChange }) {
         <form className="todo-cat-row add" onSubmit={add}>
           <input className="ainput" placeholder="New category, e.g. Gym" maxLength={40} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} aria-label="Category name" />
           <ColorPick value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
-          <input className="ainput" type="number" min="0" max="100" placeholder="e.g. 5" value={draft.weeklyTarget} onChange={(e) => setDraft({ ...draft, weeklyTarget: e.target.value })} aria-label="Weekly target (cards)" />
           <button className="abtn abtn-primary" disabled={!draft.name.trim()}><Icon name="plus" size={15} /> Add</button>
         </form>
         <div className="modal-actions">
@@ -888,12 +837,10 @@ function CategoryManager({ categories, onClose, onChange }) {
 
 function CategoryRow({ c, onSave, onDelete }) {
   const [name, setName] = useState(c.name);
-  const [target, setTarget] = useState(String(c.weeklyTarget));
   return (
     <div className="todo-cat-row">
       <input className="ainput" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name.trim() !== c.name && onSave({ name: name.trim() })} aria-label="Category name" />
       <ColorPick value={c.color} onChange={(color) => onSave({ color })} />
-      <input className="ainput" type="number" min="0" max="100" value={target} onChange={(e) => setTarget(e.target.value)} onBlur={() => Number(target) !== c.weeklyTarget && onSave({ weeklyTarget: Math.max(0, Math.round(Number(target) || 0)) })} aria-label={`${c.name} weekly target (cards)`} />
       <button type="button" className="icon-btn danger" onClick={onDelete} aria-label={`Delete ${c.name}`}><Icon name="trash" size={16} /></button>
     </div>
   );
