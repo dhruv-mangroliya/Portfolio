@@ -689,3 +689,30 @@ describe('SDE-2 courses', () => {
     await agent.post(`${S}/${yt.id}/items`).send({ items: [{ title: 'x', url: '' }] }).expect(400);
   });
 });
+
+describe('The Secret', () => {
+  const X = '/api/v1/admin/secret';
+  test('needs the passcode; uses per day never go below 0', async () => {
+    const plain = await signedIn();
+    await plain.get(X).expect(403);
+    const agent = withPasscode(await signedIn());
+    await agent.post(X).send({ name: '', startDate: '2026-01-01' }).expect(400);
+    let h = (await agent.post(X).send({ name: 'Sweets', startDate: '2026-01-01' }).expect(201)).body.habit;
+    assert.equal(h.days, 365);
+
+    const day = async (date, delta) => (await agent.post(`${X}/${h.id}/days/${date}`).send({ delta })).body.habit;
+    h = await day('2026-01-05', 1);
+    h = await day('2026-01-05', 1);
+    assert.equal(h.counts['2026-01-05'], 2);
+    h = await day('2026-01-06', -1);
+    assert.equal(h.counts['2026-01-06'], undefined, 'never below 0');
+    await agent.post(`${X}/${h.id}/days/2025-12-31`).send({ delta: 1 }).expect(400);
+    await agent.post(`${X}/${h.id}/days/2027-01-01`).send({ delta: 1 }).expect(400); // day 366
+    await agent.post(`${X}/${h.id}/days/2026-12-31`).send({ delta: 1 }).expect(200); // day 365
+    await agent.post(`${X}/${h.id}/days/2026-12-31`).send({ delta: 2 }).expect(400);
+
+    h = (await agent.patch(`${X}/${h.id}`).send({ startDate: '2026-01-06' }).expect(200)).body.habit;
+    assert.equal(h.counts['2026-01-05'], undefined, 'uses before the new start drop out');
+    await agent.delete(`${X}/${h.id}`).expect(204);
+  });
+});

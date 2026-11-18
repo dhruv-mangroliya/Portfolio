@@ -48,11 +48,13 @@ export const moneyRoutes = Router();
 
 // Extra lock on top of being signed in: every money request must carry the passcode.
 export const MONEY_PASSCODE = '1808';
-moneyRoutes.use((req, _res, next) => {
+/** Middleware: the request must carry the passcode (also used by The Secret tracker). */
+export function requirePasscode(req, _res, next) {
   const given = String(req.get('x-money-passcode') ?? '');
   const ok = given.length === MONEY_PASSCODE.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(MONEY_PASSCODE));
   next(ok ? undefined : new AppError(403, 'PASSCODE_REQUIRED', 'Wrong passcode.'));
-});
+}
+moneyRoutes.use(requirePasscode);
 
 moneyRoutes.get('/', async (_req, res) => {
   if (!(await MoneyAccount.exists({}))) await MoneyAccount.insertMany(DEFAULT_ACCOUNTS.map((a, order) => ({ ...a, order })));

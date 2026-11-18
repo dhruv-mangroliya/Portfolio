@@ -31,7 +31,7 @@ async function request(method, path, body) {
       credentials: 'same-origin',
       headers: {
         ...(body !== undefined && { 'Content-Type': 'application/json' }),
-        ...(path.startsWith('/admin/money') && moneyPasscode && { 'X-Money-Passcode': moneyPasscode }),
+        ...(/^\/admin\/(money|secret)/.test(path) && moneyPasscode && { 'X-Money-Passcode': moneyPasscode }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -89,6 +89,13 @@ export const api = {
   updateSdeItem: (id, n, data) => request('PATCH', `/admin/sde/${id}/items/${n}`, data),
   moveSdeItem: (id, n, to) => request('POST', `/admin/sde/${id}/items/${n}/move`, { to }),
   deleteSdeItem: (id, n) => request('DELETE', `/admin/sde/${id}/items/${n}`),
+
+  // The Secret (passcode-locked, same code as Money)
+  secret: () => request('GET', '/admin/secret'),
+  addSecret: (data) => request('POST', '/admin/secret', data),
+  updateSecret: (id, data) => request('PATCH', `/admin/secret/${id}`, data),
+  deleteSecret: (id) => request('DELETE', `/admin/secret/${id}`),
+  secretDay: (id, date, delta) => request('POST', `/admin/secret/${id}/days/${date}`, { delta }),
 
   // Money tracker — kind: 'incomes' | 'targets' | 'accounts'
   money: () => request('GET', '/admin/money'),

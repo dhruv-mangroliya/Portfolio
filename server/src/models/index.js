@@ -14,3 +14,4 @@ export { DietDay, DietPlan } from './Diet.js';
 export { TodoCategory, TodoGoal, TodoTask } from './Todo.js';
 export { IncomeEntry, MoneyAccount, MoneyTransfer } from './Money.js';
 export { StudyTrack } from './StudyTrack.js';
+export { SecretHabit } from './SecretHabit.js';

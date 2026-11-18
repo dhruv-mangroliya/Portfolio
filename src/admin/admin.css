@@ -1214,3 +1214,76 @@ a.sde-title:hover { color: var(--a-ink); text-decoration: underline; }
 .diet-remind.late { --rem: #c2410c; border-width: 2px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .diet-remind.late { --rem: #fb923c; } }
 :root[data-theme="dark"] .diet-remind.late { --rem: #fb923c; }
+
+/* ================================================================ The Secret */
+.secret-page { --s-saved: #15803d; --s-used: #b45309; --s-over: #b91c1c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .secret-page { --s-saved: #4ade80; --s-used: #f59e0b; --s-over: #f87171; } }
+:root[data-theme="dark"] .secret-page { --s-saved: #4ade80; --s-used: #f59e0b; --s-over: #f87171; }
+
+.secret-new { display: grid; gap: 14px; padding: 20px 22px; animation: fade 0.15s ease; }
+.secret-new-head { display: flex; align-items: center; justify-content: space-between; }
+.secret-new-head h2 { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; font-weight: 800; }
+.secret-new-row { display: grid; grid-template-columns: minmax(0, 1fr) 200px auto; gap: 12px; align-items: end; }
+.secret-new-row .abtn { height: 46px; white-space: nowrap; }
+.secret-new .goal-help { margin: 0; }
+
+.secret-tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.secret-tab { display: grid; gap: 4px; justify-items: start; padding: 14px 16px; border: 2px solid transparent; text-align: left; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+.secret-tab.on { border-color: var(--a); }
+.secret-tab strong { font-weight: 800; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.secret-tab > span:not(.secret-bal) { font-size: 0.8rem; color: var(--ink-3); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.secret-bal { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 0.8rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.secret-bal.small { font-size: 0.72rem; padding: 2px 7px; }
+.secret-bal.saved { color: var(--s-saved); background: color-mix(in srgb, var(--s-saved) 12%, transparent); }
+.secret-bal.even { color: var(--s-used); background: color-mix(in srgb, var(--s-used) 12%, transparent); }
+.secret-bal.over { color: var(--s-over); background: color-mix(in srgb, var(--s-over) 12%, transparent); }
+
+.secret-card { display: grid; gap: 18px; padding: 22px; min-width: 0; }
+.secret-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.secret-head h2 { font-size: 1.3rem; font-weight: 800; overflow-wrap: anywhere; }
+.secret-head p { margin-top: 2px; font-size: 0.85rem; color: var(--ink-3); font-weight: 600; }
+.secret-settings { grid-template-columns: minmax(0, 1fr) 200px auto; }
+
+.secret-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.secret-stat { display: grid; gap: 8px; align-content: start; padding: 16px; border-radius: 16px; background: var(--bg-2); min-width: 0; }
+.secret-stat .k { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.secret-stat .sub { font-size: 0.8rem; color: var(--ink-3); font-weight: 600; }
+.secret-stat.is-over { background: color-mix(in srgb, var(--s-over) 9%, var(--bg-2)); }
+.secret-balance-num { display: flex; align-items: center; gap: 10px; }
+.secret-balance-num strong { font-size: 2.2rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.secret-stat.is-over .secret-balance-num strong { color: var(--s-over); }
+.secret-today-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.secret-year { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.secret-year-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.secret-year-head h3 { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 800; }
+.secret-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; font-weight: 600; color: var(--ink-2); }
+.secret-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.secret-legend i { width: 12px; height: 12px; border-radius: 4px; }
+
+.secret-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 16px 18px; }
+.secret-month { display: grid; gap: 6px; align-content: start; }
+.secret-month-name { font-size: 0.8rem; font-weight: 800; color: var(--ink-2); }
+.secret-cells { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.secret-cell { aspect-ratio: 1; width: 100%; height: auto; min-width: 0; min-height: 0; box-sizing: border-box; line-height: 1; border: 0; border-radius: 5px; padding: 0; display: grid; place-items: center; font-size: 0.66rem; font-weight: 800; color: #fff; cursor: pointer; }
+.secret-cell.blank { background: transparent; cursor: default; }
+.secret-cell.future { background: var(--bg-2); }
+.secret-cell.c0, .secret-legend .c0 { background: color-mix(in srgb, var(--s-saved) 55%, var(--surface)); }
+.secret-cell.c1, .secret-legend .c1 { background: var(--s-used); }
+.secret-cell.c2, .secret-legend .c2 { background: var(--s-over); }
+.secret-cell.today { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink-2); }
+.secret-cell.sel { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--a); }
+.secret-cell:not(.blank):hover { filter: brightness(1.08); }
+
+.secret-day { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; background: var(--bg-2); font-size: 0.9rem; }
+.secret-day-btns { display: inline-flex; align-items: center; gap: 6px; }
+.secret-day-btns .n { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 760px) {
+  .secret-new-row, .secret-settings { grid-template-columns: 1fr; }
+  .secret-settings > .abtn { margin-top: 0; }
+  .secret-stats { grid-template-columns: 1fr; }
+  .secret-card { padding: 16px; }
+  .secret-months { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}

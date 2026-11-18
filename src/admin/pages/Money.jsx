@@ -26,11 +26,12 @@ export default function Money() {
   const [data, setData] = useState(null);
   // Leaving the tab forgets the passcode, so it's asked again next time.
   useEffect(() => () => setMoneyPasscode(''), []);
-  if (!data) return <MoneyLock onUnlock={setData} />;
+  if (!data) return <PasscodeLock title="Money" subtitle="What you earn each month, and where it goes." icon="wallet" accent="lime" load={api.money} onUnlock={setData} />;
   return <MoneyPage initial={data} onLock={() => { setMoneyPasscode(''); setData(null); }} />;
 }
 
-function MoneyLock({ onUnlock }) {
+/** Passcode screen shared by Money and The Secret. `load` is called with the passcode set; its result unlocks. */
+export function PasscodeLock({ title, subtitle, icon, accent, load, onUnlock }) {
   const [code, setCode] = useState('');
   const [state, setState] = useState({ busy: false, error: '', shake: 0 });
   const inputRef = useRef(null);
@@ -41,7 +42,7 @@ function MoneyLock({ onUnlock }) {
     setState((s) => ({ ...s, busy: true, error: '' }));
     setMoneyPasscode(code);
     try {
-      onUnlock(await api.money());
+      onUnlock(await load());
     } catch (err) {
       setMoneyPasscode('');
       setCode('');
@@ -52,7 +53,7 @@ function MoneyLock({ onUnlock }) {
 
   return (
     <div className="page money-page">
-      <PageHeader title="Money" subtitle="What you earn each month, and where it goes." icon="wallet" accent="lime" />
+      <PageHeader title={title} subtitle={subtitle} icon={icon} accent={accent} />
       <form className="card money-lock" onSubmit={submit} noValidate>
         <span className="money-lock-icon" aria-hidden="true"><Icon name="lock" size={26} /></span>
         <h2>Enter passcode</h2>
