@@ -112,8 +112,8 @@ function Shell() {
             <SideLink to="/admin/weight" icon="scale" accent="pink">Weight</SideLink>
             <SideLink to="/admin/diet" icon="apple" accent="lime">Diet & meals</SideLink>
             <SideLink to="/admin/todo" icon="check" accent="cyan">To-do</SideLink>
-            <SideLink to="/admin/money" icon="wallet" accent="lime">Money</SideLink>
             <SideLink to="/admin/sde" icon="graduation" accent="blue">SDE-2</SideLink>
+            <SideLink to="/admin/money" icon="wallet" accent="lime">Money</SideLink>
             <SideLink to="/admin/secret" icon="lock" accent="violet">The Secret</SideLink>
 
             {/* Website editing tabs, folded into one group (rarely needed day to day). */}
