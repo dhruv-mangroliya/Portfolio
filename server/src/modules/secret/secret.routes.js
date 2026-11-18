@@ -1,6 +1,6 @@
 // "The Secret" (admin + passcode): habits allowed once a day for a year.
 //   GET    /admin/secret                     { habits }
-//   POST   /admin/secret                     { name, startDate }  → 365 daily tickets from startDate
+//   POST   /admin/secret                     { name, startDate }  → 1 ticket per day from startDate to 31 Dec of that year
 //   PATCH  /admin/secret/:id                 { name?, startDate? }
 //   DELETE /admin/secret/:id
 //   POST   /admin/secret/:id/days/:date      { delta: 1 | -1 } → one more / one less use that day (never below 0)
@@ -25,6 +25,9 @@ const addDays = (key, n) => {
   return d.toISOString().slice(0, 10);
 };
 
+/** Tickets for a tracker: one per day from the start date through 31 December of that year. */
+const daysToYearEnd = (start) => Math.round((Date.parse(`${start.slice(0, 4)}-12-31T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
+
 export const secretRoutes = Router()
   .use(requirePasscode)
   .get('/', async (_req, res) => {
@@ -32,13 +35,14 @@ export const secretRoutes = Router()
   })
   .post('/', validate({ body: habitBody }), async (req, res) => {
     const order = ((await SecretHabit.findOne().sort({ order: -1 }).lean())?.order ?? -1) + 1;
-    res.status(201).json({ habit: await SecretHabit.create({ ...req.valid.body, order }) });
+    res.status(201).json({ habit: await SecretHabit.create({ ...req.valid.body, days: daysToYearEnd(req.valid.body.startDate), order }) });
   })
   .patch('/:id', validate({ params: idParam, body: habitBody.partial() }), async (req, res) => {
     const habit = await SecretHabit.findById(req.valid.params.id);
     if (!habit) throw NotFound('Tracker not found.');
     Object.assign(habit, req.valid.body);
-    // Uses outside the new 365-day window no longer belong to it.
+    habit.days = daysToYearEnd(habit.startDate);
+    // Uses outside the new window no longer belong to it.
     const end = addDays(habit.startDate, habit.days - 1);
     for (const key of [...habit.counts.keys()]) if (key < habit.startDate || key > end) habit.counts.delete(key);
     res.json({ habit: await habit.save() });

@@ -707,12 +707,16 @@ describe('The Secret', () => {
     h = await day('2026-01-06', -1);
     assert.equal(h.counts['2026-01-06'], undefined, 'never below 0');
     await agent.post(`${X}/${h.id}/days/2025-12-31`).send({ delta: 1 }).expect(400);
-    await agent.post(`${X}/${h.id}/days/2027-01-01`).send({ delta: 1 }).expect(400); // day 366
-    await agent.post(`${X}/${h.id}/days/2026-12-31`).send({ delta: 1 }).expect(200); // day 365
+    await agent.post(`${X}/${h.id}/days/2027-01-01`).send({ delta: 1 }).expect(400); // next year
+    await agent.post(`${X}/${h.id}/days/2026-12-31`).send({ delta: 1 }).expect(200); // last day
     await agent.post(`${X}/${h.id}/days/2026-12-31`).send({ delta: 2 }).expect(400);
 
     h = (await agent.patch(`${X}/${h.id}`).send({ startDate: '2026-01-06' }).expect(200)).body.habit;
     assert.equal(h.counts['2026-01-05'], undefined, 'uses before the new start drop out');
+    assert.equal(h.days, 360, '6 Jan → 31 Dec');
+    const nov = (await agent.post(X).send({ name: 'Late start', startDate: '2026-11-01' }).expect(201)).body.habit;
+    assert.equal(nov.days, 61, '1 Nov → 31 Dec');
+    await agent.post(`${X}/${nov.id}/days/2027-01-01`).send({ delta: 1 }).expect(400);
     await agent.delete(`${X}/${h.id}`).expect(204);
   });
 });

@@ -1,4 +1,4 @@
-// "The Secret": a habit you allow yourself once a day for a year (365 tickets from a start date).
+// "The Secret": a habit you allow yourself once a day, from a start date to 31 Dec (one ticket per day).
 // Every use spends a ticket. The balance = days so far − uses so far; using it twice in a day puts you
 // below 0, and you get back by skipping later days. Locked behind the same passcode as Money.
 import { useEffect, useMemo, useState } from 'react';
@@ -16,6 +16,8 @@ const fromKey = (k) => { const [y, m, d] = k.split('-').map(Number); return new 
 const addDays = (k, n) => { const d = fromKey(k); d.setDate(d.getDate() + n); return toKey(d); };
 const diffDays = (a, b) => Math.round((fromKey(b) - fromKey(a)) / 86_400_000); // b − a
 const todayKey = () => toKey(new Date());
+const yearEnd = (k) => `${k.slice(0, 4)}-12-31`;
+const ticketsFor = (start) => diffDays(start, yearEnd(start)) + 1;
 const fmt = (k, opts = { day: 'numeric', month: 'short', year: 'numeric' }) => fromKey(k).toLocaleDateString(undefined, opts);
 
 const SELECTED_KEY = 'admin-secret-habit';
@@ -52,7 +54,7 @@ export default function Secret() {
     return (
       <PasscodeLock
         title="The Secret"
-        subtitle="One allowance a day for a whole year."
+        subtitle="One allowance a day until the year ends."
         icon="lock"
         accent="violet"
         load={async () => (await api.secret()).habits}
@@ -74,7 +76,7 @@ function SecretPage({ habits, setHabits, onLock }) {
     <div className="page secret-page a-violet">
       <PageHeader
         title="The Secret"
-        subtitle="One allowance a day for a whole year — use it twice and you have to save it back later."
+        subtitle="One allowance a day until the year ends — use it twice and you have to save it back later."
         icon="lock"
         accent="violet"
         actions={
@@ -95,7 +97,7 @@ function SecretPage({ habits, setHabits, onLock }) {
             setHabits((list) => [...list, h]);
             pick(h.id);
             setAdding(false);
-            toast(`Tracking “${h.name}” — ${h.days} tickets from ${fmt(h.startDate)}`);
+            toast(`Tracking “${h.name}” — ${h.days} tickets, ${fmt(h.startDate)} → ${fmt(yearEnd(h.startDate))}`);
           }}
         />
       )}
@@ -177,11 +179,11 @@ function NewTracker({ first, onClose, onAdded }) {
           <input id="secret-start" className="ainput" type="date" value={form.startDate} onChange={set('startDate')} />
           {err.startDate && <span className="err">{err.startDate}</span>}
         </div>
-        <button className="abtn abtn-primary" disabled={busy || !form.name.trim() || !form.startDate}>{busy ? 'Creating…' : 'Create · 365 tickets'}</button>
+        <button className="abtn abtn-primary" disabled={busy || !form.name.trim() || !form.startDate}>{busy ? 'Creating…' : `Create${form.startDate ? ` · ${ticketsFor(form.startDate)} tickets` : ''}`}</button>
       </div>
       {form.startDate && (
         <p className="goal-help">
-          One ticket per day: {fmt(form.startDate)} → {fmt(addDays(form.startDate, 364))}. Each time you do it, tick that day — a second tick the same day has to be saved back later.
+          One ticket per day until the year ends: {fmt(form.startDate)} → {fmt(yearEnd(form.startDate))} = {ticketsFor(form.startDate)} tickets. Each time you do it, tick that day — a second tick the same day has to be saved back later.
         </p>
       )}
     </form>
@@ -311,7 +313,7 @@ function Tracker({ habit: h, onChange, onDeleted }) {
   );
 }
 
-/** 12-ish month calendars covering the tracker's 365 days. */
+/** Month calendars covering the tracker's days (start → 31 Dec). */
 function YearGrid({ habit: h, today, selected, onPick }) {
   const end = addDays(h.startDate, h.days - 1);
   const counts = h.counts || {};
@@ -362,7 +364,7 @@ function Settings({ habit: h, onSaved }) {
   const [err, setErr] = useState({});
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const outside = Object.keys(h.counts || {}).filter((k) => k < form.startDate || k > addDays(form.startDate, h.days - 1)).length;
+  const outside = form.startDate ? Object.keys(h.counts || {}).filter((k) => k < form.startDate || k > yearEnd(form.startDate)).length : 0;
 
   async function save(e) {
     e.preventDefault();
@@ -389,7 +391,7 @@ function Settings({ habit: h, onSaved }) {
       <div className={cx('afield', err.startDate && 'has-error')}>
         <label htmlFor="secret-s-start">Start date</label>
         <input id="secret-s-start" className="ainput" type="date" value={form.startDate} onChange={set('startDate')} />
-        {err.startDate ? <span className="err">{err.startDate}</span> : outside > 0 && form.startDate !== h.startDate && <span className="sde-hint">{outside} ticked day{outside === 1 ? '' : 's'} fall outside — they’ll be removed.</span>}
+        {err.startDate ? <span className="err">{err.startDate}</span> : form.startDate && outside === 0 ? <span className="sde-hint">{ticketsFor(form.startDate)} tickets, to {fmt(yearEnd(form.startDate), { day: 'numeric', month: 'short' })}</span> : outside > 0 && form.startDate !== h.startDate && <span className="sde-hint">{outside} ticked day{outside === 1 ? '' : 's'} fall outside — they’ll be removed.</span>}
       </div>
       <button className="abtn abtn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
     </form>
